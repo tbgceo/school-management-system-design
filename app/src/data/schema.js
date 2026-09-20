@@ -1,0 +1,182 @@
+/**
+ * Record shapes for TBG School OS.
+ *
+ * Everything the UI renders is derived from these flat record arrays by src/lib/rules.js.
+ * No screen stores a pre-computed metric, so swapping the mock generator for real rows in
+ * M7 is a data-layer change only: return the same shapes from the API and the screens work
+ * unchanged.
+ *
+ * Conventions that exist for the migration:
+ *  - Every record carries `schoolId` (Q6 - single school today, multi-school later).
+ *  - Every record carries `semesterId` so a term filter is a WHERE clause, not a recompute.
+ *  - Ids are strings, so swapping to uuid/bigint later does not break comparisons.
+ *  - Dates are ISO strings, not Date objects, matching what JSON APIs return.
+ *  - Submissions carry both `teacherId` (whose record it is) and `recordedBy` (who typed it),
+ *    which is Q2's "staff fills in on behalf of a teacher" requirement.
+ *
+ * @typedef {Object} School
+ * @property {string} id
+ * @property {string} nameTh
+ * @property {string} nameEn
+ *
+ * @typedef {Object} Teacher
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} nameTh        e.g. "ครูกนกวรรณ สุขใจ"
+ * @property {string} nameEn        e.g. "Kanokwan S."
+ * @property {string} email         school login (S0)
+ * @property {'director'|'teacher'|'staff'} role
+ * @property {string|null} subjectGroupId   the learning area they lead or belong to
+ * @property {boolean} isDepartmentHead     department heads run observations (A4)
+ *
+ * @typedef {Object} Classroom
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} name          e.g. "ป.4/2"
+ * @property {'primary'|'lower'} level
+ * @property {number} grade
+ * @property {string} homeroomTeacherId
+ *
+ * @typedef {Object} Student
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} classroomId
+ * @property {string} code          school student number, searchable in S5
+ * @property {string} nameTh
+ * @property {string} guardianId    one guardian per student in the MVP
+ *
+ * @typedef {Object} Guardian
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} studentId
+ * @property {string} nameTh
+ *
+ * S4 - one row per student per subject per checkpoint.
+ * @typedef {Object} AssessmentRecord
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} classroomId
+ * @property {string} studentId
+ * @property {string} subjectId
+ * @property {1|2|3|4} checkpoint
+ * @property {number} score         0-100
+ * @property {string} recordedAt    ISO
+ * @property {string} teacherId     the homeroom/subject teacher the submission belongs to
+ * @property {string} recordedBy    who actually typed it (staff proxy keeps a different id)
+ * @property {boolean} onBehalf     true when recordedBy !== teacherId
+ * @property {string|null} note     280 chars, reason for an unusual drop
+ *
+ * S5 - behaviour incident.
+ * @typedef {Object} BehaviourRecord
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} classroomId
+ * @property {string} studentId
+ * @property {'late'|'absent'|'uniform'|'fight'|'other'} typeId
+ * @property {1|2|3} level
+ * @property {string} occurredAt    ISO
+ * @property {string} recordedBy
+ * @property {string|null} note
+ *
+ * S5 - one observation round for one teacher, five topic scores.
+ * @typedef {Object} ObservationRecord
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} teacherId     the teacher being observed
+ * @property {string} observerId    department head (A4)
+ * @property {1|2} round
+ * @property {Record<string, number>} scores   topicId -> 1..5
+ * @property {string} recordedAt
+ * @property {string|null} note
+ *
+ * S5 - one guardian, one channel, one term: did they do it.
+ * @typedef {Object} ParentEngagementRecord
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} classroomId
+ * @property {string} guardianId
+ * @property {'line_oa'|'conference'|'homework'|'fee'|'volunteer'|'survey'} channelId
+ * @property {boolean} done
+ * @property {string} recordedAt
+ * @property {string} recordedBy
+ *
+ * S6 - a task assigned to one or more teachers. Status is derived by R8, never stored.
+ * @typedef {Object} Task
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} title
+ * @property {string[]} assigneeIds
+ * @property {string|null} classroomId
+ * @property {string} dueDate       ISO date, never in the past at creation time
+ * @property {'manual'|'action_item'} source
+ * @property {string|null} sourceActionItemId
+ * @property {string|null} completedAt
+ * @property {string} createdBy
+ * @property {string} createdAt
+ * @property {{name: string, kind: 'image'|'pdf'}[]} attachments   max 5
+ *
+ * R7 - generated by the system, never created by hand, closed by the director only.
+ * @typedef {Object} ActionItem
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {'class_at_risk'|'observation_low'|'behaviour_level3'|'submission_late'} trigger
+ * @property {string|null} classroomId
+ * @property {string|null} teacherId
+ * @property {string} title
+ * @property {string} titleTh
+ * @property {string} detail
+ * @property {'danger'|'warning'|'info'} tone
+ * @property {string} raisedAt
+ * @property {string|null} closedAt
+ * @property {string|null} closedBy
+ *
+ * R9 - every edit keeps the previous value.
+ * @typedef {Object} EditLogEntry
+ * @property {string} id
+ * @property {string} recordType
+ * @property {string} recordId
+ * @property {string} field
+ * @property {string|number|null} from
+ * @property {string|number|null} to
+ * @property {string} editedBy
+ * @property {string} editedAt
+ * @property {string|null} reason   required once the 7-day window has passed
+ *
+ * S1 - one Excel upload attempt.
+ * @typedef {Object} ImportBatch
+ * @property {string} id
+ * @property {string} schoolId
+ * @property {string} semesterId
+ * @property {string} fileName
+ * @property {'append'|'replace'} mode
+ * @property {number} rowsOk
+ * @property {number} rowsFailed
+ * @property {{sheet: string, row: number, reason: string}[]} errors
+ * @property {string} uploadedBy
+ * @property {string} uploadedAt
+ * @property {'pending'|'confirmed'|'rejected'} state
+ */
+
+export const RECORD_TYPES = [
+  'schools',
+  'teachers',
+  'classrooms',
+  'students',
+  'guardians',
+  'assessments',
+  'behaviour',
+  'observations',
+  'parentEngagement',
+  'tasks',
+  'actionItems',
+  'editLog',
+  'importBatches',
+];

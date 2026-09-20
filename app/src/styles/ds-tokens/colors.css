@@ -1,0 +1,42 @@
+:root{
+/* ── Brand: TBG orbit blue (sampled from the primary wordmark gradient) ── */
+--tbg-blue-950:#00005e;--tbg-blue-900:#0000a0;--tbg-blue-800:#1414b0;--tbg-blue-700:#2a2ac0;
+--tbg-blue-600:#4040c0;--tbg-blue-500:#6060cc;--tbg-blue-400:#8080d8;--tbg-blue-300:#a0a0e0;
+--tbg-blue-200:#c4c4ec;--tbg-blue-100:#e2e2f6;--tbg-blue-050:#f2f2fb;
+
+/* ── Product: Cpay ember (sampled from the Cpay sphere) ── */
+--cpay-red-700:#c8281e;--cpay-red-600:#e04020;--cpay-orange-500:#f06030;
+--cpay-orange-400:#f07830;--cpay-orange-300:#f09030;--cpay-amber-200:#f0a848;
+--cpay-silver:#b0b0b0;
+
+/* ── Neutrals ── */
+--ink-1000:#000000;--ink-900:#111114;--ink-800:#1f1f26;--ink-700:#33333d;
+--ink-600:#4d4d59;--ink-500:#6b6b78;--ink-400:#8f8f9c;--ink-300:#b8b8c2;
+--ink-200:#d9d9e0;--ink-100:#ededf2;--ink-050:#f7f7fa;--ink-000:#ffffff;
+
+/* ── Legacy spectrum (the 2011 "eye" mark; archival use only) ── */
+--legacy-magenta:#e00080;--legacy-red:#f00000;--legacy-orange:#ff9000;--legacy-yellow:#ffd000;
+--legacy-lime:#a0d000;--legacy-teal:#00b0b0;--legacy-blue:#0060b0;--legacy-violet:#602090;
+
+/* ── Semantic aliases ── */
+--text-strong:var(--ink-1000);--text-body:var(--ink-700);--text-muted:var(--ink-500);
+--text-inverse:var(--ink-000);--text-brand:var(--tbg-blue-900);--text-link:var(--tbg-blue-800);
+--text-link-hover:var(--tbg-blue-600);--text-on-brand:var(--ink-000);
+
+--surface-page:var(--ink-000);--surface-subtle:var(--ink-050);--surface-card:var(--ink-000);
+--surface-inverse:var(--ink-1000);--surface-brand:var(--tbg-blue-900);
+--surface-brand-soft:var(--tbg-blue-050);--surface-accent:var(--cpay-orange-500);
+
+--border-subtle:var(--ink-200);--border-default:var(--ink-300);--border-strong:var(--ink-1000);
+--border-brand:var(--tbg-blue-900);--focus-ring:var(--tbg-blue-600);
+
+--status-success:#1a8a4a;--status-warning:var(--cpay-orange-300);
+--status-danger:var(--cpay-red-600);--status-info:var(--tbg-blue-600);
+--status-success-soft:#e6f4ec;--status-warning-soft:#fdf0e4;
+--status-danger-soft:#fceae7;--status-info-soft:var(--tbg-blue-050);
+
+/* ── Signature gradients (the orbit sweep + the Cpay sphere) ── */
+--gradient-orbit:linear-gradient(103deg,var(--tbg-blue-900) 0%,var(--tbg-blue-500) 46%,var(--tbg-blue-300) 100%); /* @kind color */
+--gradient-orbit-deep:linear-gradient(160deg,var(--tbg-blue-950) 0%,var(--tbg-blue-800) 100%); /* @kind color */
+--gradient-cpay:linear-gradient(135deg,var(--cpay-amber-200) 0%,var(--cpay-orange-500) 48%,var(--cpay-red-700) 100%); /* @kind color */
+}
