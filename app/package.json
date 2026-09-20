@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "TBG School OS - Module 01 school performance dashboard (MVP)",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -81,6 +81,60 @@ each render. Two consequences worth keeping:
   so the confirm-then-commit flow is real; swap `inspect()` in `ImportData.jsx` for a parser (or
   the SGS/DMC connector in Wave 2).
 
+## Deploying
+
+Two things about this repo will break a first deploy if they are not set:
+
+- **Root Directory is `app`, not the repo root.** The git root is the handoff
+  bundle; the app is one level down, so a build from the root finds no
+  `package.json`.
+- **`BASE_PATH` is for GitHub Pages only.** Pages serves from `/<repo>/`; Vercel
+  and Netlify serve from the domain root, where `vite.config.js` already
+  defaults to `/`. Setting it on Vercel would break every asset URL.
+
+### Vercel
+
+`vercel.json` already carries the framework, build command, output directory and
+the SPA rewrite. Import the repository at <https://vercel.com/new>, then:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `app` |
+| Framework Preset | Vite (detected) |
+| Build Command | `npm run build` (from `vercel.json`) |
+| Output Directory | `dist` (from `vercel.json`) |
+| Environment Variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+
+Or from a terminal, once `vercel login` has been done by the account owner:
+
+```bash
+cd app
+npx vercel link
+npx vercel env add VITE_SUPABASE_URL production
+npx vercel env add VITE_SUPABASE_ANON_KEY production
+npx vercel --prod
+```
+
+The rewrite in `vercel.json` is the one improvement over GitHub Pages: a deep
+link such as `/class/cls-5` is answered with the app shell and a **200**, rather
+than the `404.html` fallback and a 404 status that Pages has no way to avoid.
+
+### GitHub Pages
+
+Already live, deployed by `.github/workflows/deploy.yml` on every push to
+`main`. It reads the same two values from repository secrets — Settings →
+Secrets and variables → Actions. With them unset the site still builds and
+simply says it has not been configured.
+
+### What the anon key is doing in a public bundle
+
+Vite inlines every `VITE_*` variable into the JavaScript it ships, so the anon
+key is readable by anyone who opens the site. That is what it is for, and it is
+safe **only because** row level security is on and the anon role can read
+nothing. `npm run check:supabase` asserts exactly that, and it is worth running
+against each deployment target. The `service_role` key must never be set as a
+`VITE_*` variable anywhere.
+
 ## Not in this build
 
 Modules 03–05 are greyed out in the nav — they are Wave 2–4 in the build spec. Login (S0) is
