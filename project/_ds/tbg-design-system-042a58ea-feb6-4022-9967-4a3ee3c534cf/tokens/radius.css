@@ -1,0 +1,9 @@
+:root{
+--radius-none:0px;--radius-xs:2px;--radius-sm:4px;--radius-md:6px;--radius-lg:10px;
+--radius-xl:16px;--radius-pill:999px;--radius-circle:50%;
+--radius-control:var(--radius-sm);--radius-card:var(--radius-md);--radius-modal:var(--radius-lg);
+--border-hairline:1px; /* @kind spacing */
+--border-medium:2px; /* @kind spacing */
+--border-heavy:3px; /* @kind spacing */
+--rule-accent:4px; /* @kind spacing */
+}

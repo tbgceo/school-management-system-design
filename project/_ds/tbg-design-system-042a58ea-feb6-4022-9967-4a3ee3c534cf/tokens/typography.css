@@ -1,0 +1,38 @@
+:root{
+--font-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+--font-body:"IBM Plex Sans Thai","Archivo",system-ui,sans-serif;
+--font-mono:"IBM Plex Mono",ui-monospace,monospace;
+
+--fw-light:300; /* @kind font */
+--fw-regular:400; /* @kind font */
+--fw-medium:500; /* @kind font */
+--fw-semibold:600; /* @kind font */
+--fw-bold:700; /* @kind font */
+--fw-black:900; /* @kind font */
+
+--fs-3xs:11px;--fs-2xs:12px;--fs-xs:13px;--fs-sm:14px;--fs-md:16px;--fs-lg:18px;
+--fs-xl:21px;--fs-2xl:26px;--fs-3xl:32px;--fs-4xl:42px;--fs-5xl:56px;--fs-6xl:72px;--fs-7xl:96px;
+
+--lh-tight:1.04; /* @kind font */
+--lh-snug:1.18; /* @kind font */
+--lh-normal:1.45; /* @kind font */
+--lh-relaxed:1.7; /* @kind font */
+
+--ls-mega:-0.02em; /* @kind font */
+--ls-tight:-0.01em; /* @kind font */
+--ls-normal:0; /* @kind font */
+--ls-wide:0.06em; /* @kind font */
+--ls-wider:0.14em; /* @kind font */
+--ls-widest:0.28em; /* @kind font */
+
+/* Semantic type roles */
+--type-hero-size:var(--fs-6xl); /* @kind font */
+--type-hero-weight:var(--fw-black); /* @kind font */
+--type-hero-tracking:var(--ls-wide); /* @kind font */
+--type-h1-size:var(--fs-4xl);--type-h2-size:var(--fs-3xl);--type-h3-size:var(--fs-xl);
+--type-eyebrow-size:var(--fs-2xs); /* @kind font */
+--type-eyebrow-tracking:var(--ls-widest); /* @kind font */
+--type-body-size:var(--fs-md); /* @kind font */
+--type-body-line:var(--lh-relaxed); /* @kind font */
+--type-caption-size:var(--fs-xs);
+}

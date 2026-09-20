@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/colors.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/typography.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/radius.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/elevation.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/motion.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/tokens/base.css">
+<link rel="stylesheet" href="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/styles.css">
+<script src="_ds/tbg-design-system-042a58ea-feb6-4022-9967-4a3ee3c534cf/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--surface-page);font-family:var(--font-body),system-ui,sans-serif;color:var(--text-body)}
+a{color:var(--text-link)}a:hover{color:var(--text-link-hover)}
+</style></helmet>
+
+<div style="max-width:1120px;margin:0 auto;padding:0 clamp(20px,5vw,48px) 96px">
+
+<div style="background:var(--ink-1000);color:#fff;position:relative;overflow:hidden;margin:0 calc(-1 * clamp(20px,5vw,48px)) 56px;padding:56px clamp(20px,5vw,48px) 48px">
+<span style="position:absolute;top:-200px;right:-140px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(160,160,224,.36),transparent 66%)"></span>
+<div style="position:relative;max-width:840px;display:flex;flex-direction:column;gap:14px">
+<span style="font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.28em;color:rgba(255,255,255,.6)">BUILD SPEC v1 · MODULE 01 + FOUNDATION · 19 SEP 2026</span>
+<span style="font-family:var(--font-display);font-size:clamp(32px,4.6vw,48px);font-weight:900;letter-spacing:.04em;line-height:1.06;text-transform:uppercase">SPEC  ฉบับส่งต่อ  ให้  CLAUDE  CODE</span>
+<span style="font-size:16px;line-height:1.7;color:rgba(255,255,255,.78)">เติมสี่ส่วนที่ขาดจากการตรวจ 7 ข้อ: เป้าหมายที่วัดผลได้ ผู้ใช้และสิทธิ์ ฟิลด์ของทุกหน้าจอ กฎการคำนวณ และ flow หลักสามเส้น ทุกตัวเลขที่เป็นการสมมติถูกรวบไว้ท้ายหน้าเพื่อให้คุณยืนยันหรือแก้ทีเดียว</span>
+</div>
+<div style="position:relative;margin-top:36px;padding-top:26px;border-top:1px solid rgba(255,255,255,.18)">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.StatRow" tone="inverse" stats="{{ headStats }}" hint-size="100%,90px"></x-import>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.SectionLabel" index="01" hint-size="160px,84px">เป้าหมายที่วัดผลได้</x-import>
+<span style="max-width:66ch;font-size:15px;line-height:1.7">ระบบถือว่าสำเร็จเมื่อครบสามข้อนี้ภายในสิ้นภาคเรียนที่ 1/2569 วัดจากข้อมูลในระบบเอง ไม่ต้องทำแบบสำรวจเพิ่ม</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:72px">
+<sc-for list="{{ goals }}" as="g" hint-placeholder-count="3">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Card" accent="brand" padding="26px" hint-size="100%,260px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:var(--font-display);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted)">{{ g.tag }}</span>
+<span style="font-family:var(--font-display);font-size:34px;font-weight:900;line-height:1;color:var(--tbg-blue-900)">{{ g.target }}</span>
+<span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--ink-1000);line-height:1.45">{{ g.title }}</span>
+<span style="font-size:13.5px;line-height:1.7">{{ g.body }}</span>
+<span style="margin-top:4px;padding-top:12px;border-top:1px solid var(--ink-100);font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);line-height:1.6">วัดจาก: {{ g.measure }}</span>
+<span style="font-size:12.5px;color:var(--text-muted)">ฐานปัจจุบัน: {{ g.baseline }}</span>
+</div>
+</x-import>
+</sc-for>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.SectionLabel" index="02" hint-size="160px,84px">ผู้ใช้และสิทธิ์</x-import>
+<span style="max-width:66ch;font-size:15px;line-height:1.7">MVP ใช้ login เดียวกับอีเมลโรงเรียน และตัวกรองข้อมูลสองระดับเท่านั้น ระบบสิทธิ์เต็มรูปแบบอยู่ใน Wave 2 ตามที่ตกลงกันไว้</span>
+</div>
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Card" padding="0" hint-size="100%,420px">
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 130px;gap:0;padding:14px 22px;background:var(--ink-050);border-bottom:1px solid var(--border-subtle);font-family:var(--font-display);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)">
+<span>บทบาท</span><span>เห็นอะไร</span><span>ทำอะไรได้</span><span>ห้ามทำ</span>
+</div>
+<sc-for list="{{ roles }}" as="r" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 130px;gap:0;padding:18px 22px;border-bottom:1px solid var(--ink-100);align-items:start">
+<div style="display:flex;flex-direction:column;gap:4px;padding-right:12px">
+<span style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--ink-1000)">{{ r.name }}</span>
+<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">{{ r.key }}</span>
+</div>
+<span style="font-size:13.5px;line-height:1.65;padding-right:16px">{{ r.sees }}</span>
+<span style="font-size:13.5px;line-height:1.65;padding-right:16px">{{ r.does }}</span>
+<span style="font-size:12.5px;line-height:1.6;color:var(--status-danger)">{{ r.cannot }}</span>
+</div>
+</sc-for>
+</x-import>
+<p style="max-width:66ch;font-size:13.5px;line-height:1.7;color:var(--text-muted);margin:16px 0 72px">ทุกตารางข้อมูลมีคอลัมน์ school_id, created_by, created_at, updated_at เสมอ แม้ MVP จะใช้โรงเรียนเดียว</p>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.SectionLabel" index="03" hint-size="160px,84px">หน้าจอและฟิลด์</x-import>
+<span style="max-width:66ch;font-size:15px;line-height:1.7">หกหน้าจอของ MVP ฟิลด์ที่ขึ้นเครื่องหมาย บังคับ ต้องกรอกก่อนบันทึก ชนิดข้อมูลเขียนตามที่ใช้ในฐานข้อมูลจริง</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px;margin-bottom:72px">
+<sc-for list="{{ screens }}" as="s" hint-placeholder-count="6">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Card" padding="0" hint-size="100%,380px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;padding:22px 24px;border-bottom:1px solid var(--border-subtle)">
+<div style="display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--tbg-blue-900)">{{ s.id }}</span>
+<span style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink-1000)">{{ s.name }}</span>
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Badge" tone="brand" hint-size="80px,22px">{{ s.who }}</x-import>
+</div>
+<span style="font-size:13.5px;line-height:1.65;max-width:70ch;color:var(--text-body)">{{ s.purpose }}</span>
+</div>
+<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">{{ s.device }}</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 150px 90px 1fr;gap:0;padding:11px 24px;background:var(--ink-050);border-bottom:1px solid var(--border-subtle);font-family:var(--font-display);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)">
+<span>ฟิลด์</span><span>ชนิด</span><span>บังคับ</span><span>หมายเหตุ / ค่าที่เลือกได้</span>
+</div>
+<sc-for list="{{ s.fields }}" as="f" hint-placeholder-count="6">
+<div style="display:grid;grid-template-columns:1fr 150px 90px 1fr;gap:0;padding:11px 24px;border-bottom:1px solid var(--ink-100);align-items:baseline">
+<span style="font-size:13.5px;color:var(--ink-900);padding-right:12px">{{ f.n }}</span>
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--tbg-blue-800)">{{ f.t }}</span>
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">{{ f.req }}</span>
+<span style="font-size:12.5px;line-height:1.6;color:var(--text-muted)">{{ f.note }}</span>
+</div>
+</sc-for>
+</x-import>
+</sc-for>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.SectionLabel" index="04" hint-size="160px,84px">กฎและสูตรคำนวณ</x-import>
+<span style="max-width:66ch;font-size:15px;line-height:1.7">ทุกตัวเลขบน Dashboard ต้องคำนวณจากกฎในหัวข้อนี้เท่านั้น ห้ามเดาสูตรเอง ถ้ากฎข้อไหนขัดกับระเบียบของโรงเรียนให้แก้ที่นี่ที่เดียว</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px;margin-bottom:72px">
+<sc-for list="{{ rules }}" as="u" hint-placeholder-count="8">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Card" variant="flat" padding="22px" hint-size="100%,150px">
+<div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap">
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--tbg-blue-900);min-width:44px">{{ u.no }}</span>
+<div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:8px">
+<span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--ink-1000)">{{ u.title }}</span>
+<span style="font-size:13.5px;line-height:1.7">{{ u.body }}</span>
+<span style="font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:var(--ink-900);background:#fff;border:1px solid var(--border-subtle);border-radius:4px;padding:10px 12px">{{ u.formula }}</span>
+</div>
+</div>
+</x-import>
+</sc-for>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.SectionLabel" index="05" hint-size="160px,84px">Flow หลัก</x-import>
+<span style="max-width:66ch;font-size:15px;line-height:1.7">สามเส้นทางนี้ครอบคลุมทุกหน้าจอใน MVP ถ้าหน้าจอไหนไม่ปรากฏในสามเส้นนี้ แปลว่าไม่ต้องสร้าง</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-bottom:72px">
+<sc-for list="{{ flows }}" as="fl" hint-placeholder-count="3">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Card" padding="26px" hint-size="100%,420px">
+<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+<span style="font-family:var(--font-display);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted)">{{ fl.actor }}</span>
+<span style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink-1000)">{{ fl.title }}</span>
+<span style="font-size:12.5px;color:var(--text-muted)">{{ fl.freq }}</span>
+</div>
+<sc-for list="{{ fl.steps }}" as="st" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:30px 1fr;gap:12px;padding:11px 0;border-top:1px solid var(--ink-100);align-items:start">
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--tbg-blue-800);padding-top:2px">{{ st.n }}</span>
+<div style="display:flex;flex-direction:column;gap:3px">
+<span style="font-size:14px;font-weight:600;color:var(--ink-900);line-height:1.5">{{ st.do }}</span>
+<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">{{ st.screen }}</span>
+</div>
+</div>
+</sc-for>
+<div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--ink-1000)">
+<span style="font-size:13px;line-height:1.65;color:var(--text-body)">จบที่: {{ fl.end }}</span>
+</div>
+</x-import>
+</sc-for>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.SectionLabel" index="06" hint-size="160px,84px">สมมติฐานที่ต้องยืนยัน</x-import>
+<span style="max-width:66ch;font-size:15px;line-height:1.7">ผมเลือกค่าให้แล้วเพื่อให้สเปกเดินหน้าได้ ทุกข้อแก้ได้ในนัดเดียว ถ้าไม่แก้ ให้ถือว่าค่าที่เขียนไว้คือข้อตกลง</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
+<sc-for list="{{ assumptions }}" as="a" hint-placeholder-count="6">
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Card" variant="flat" padding="22px" hint-size="100%,170px">
+<div style="display:flex;flex-direction:column;gap:9px">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--tbg-blue-900)">{{ a.no }}</span>
+<x-import component-from-global-scope="TBGDesignSystem_042a58.Badge" tone="warning" hint-size="90px,22px">สมมติฐาน</x-import>
+</div>
+<span style="font-family:var(--font-display);font-size:15.5px;font-weight:700;color:var(--ink-1000);line-height:1.45">{{ a.q }}</span>
+<span style="font-size:13px;line-height:1.7;color:var(--text-body)">ใช้ค่านี้: {{ a.value }}</span>
+<span style="font-size:12.5px;line-height:1.65;color:var(--text-muted)">ผลถ้าผิด: {{ a.risk }}</span>
+</div>
+</x-import>
+</sc-for>
+</div>
+
+<div style="margin-top:56px;padding-top:24px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<span style="font-size:13px;color:var(--text-muted);max-width:60ch;line-height:1.7">อ่านคู่กับหน้า Build Spec (MVP และ Roadmap) และ School Dashboard ที่เป็นภาพหน้าจอจริงของ Module 01</span>
+<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">TBG SCHOOL OS · SPEC v1</span>
+</div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      headStats: [
+        { value: '3', label: 'Success metrics' },
+        { value: '6', label: 'Screens in MVP' },
+        { value: '9', label: 'Calculation rules' },
+        { value: '3', label: 'Core flows' }
+      ],
+      goals: [
+        {
+          tag: 'ความครบของข้อมูล', target: '90%',
+          title: 'ครูบันทึกครบทุกจุดตรวจภายใน 7 วัน',
+          body: 'นับเฉพาะครูประจำชั้นที่ต้องส่งผลประเมินในจุดตรวจนั้น ถ้าต่ำกว่า 90% แปลว่าฟอร์มยังยากเกินไปหรือรอบเวลาไม่สอดคล้องกับงานจริง',
+          measure: 'count(submission ภายใน 7 วัน) / count(ที่ต้องส่ง) ต่อจุดตรวจ',
+          baseline: 'ปัจจุบันรวมมือใน Excel เฉลี่ย 3 สัปดาห์ต่อรอบ'
+        },
+        {
+          tag: 'การใช้งานจริงของผู้บริหาร', target: '3 ครั้ง/สัปดาห์',
+          title: 'ผู้อำนวยการเปิด Dashboard เป็นประจำ',
+          body: 'ถ้าหน้าสรุปไม่ถูกเปิด แปลว่าไม่ได้ตอบคำถามที่ผู้บริหารถามจริง ให้กลับไปแก้ตัวชี้วัดบนหน้าแรกก่อนเพิ่มฟีเจอร์',
+          measure: 'distinct(วันที่ล็อกอิน) ต่อสัปดาห์ ของบัญชีผู้อำนวยการ',
+          baseline: 'ยังไม่มีระบบ ใช้รายงานกระดาษเดือนละครั้ง'
+        },
+        {
+          tag: 'เลิกงานซ้ำซ้อน', target: '0 ไฟล์',
+          title: 'ไม่มีการรวมคะแนนด้วย Excel ด้วยมืออีกภายในสิ้นเทอม 1',
+          body: 'นำเข้า Excel ตอนต้นเทอมยังมีได้ แต่การรวมคะแนนรายห้องระหว่างเทอมต้องเกิดในระบบทั้งหมด',
+          measure: 'ตรวจจากการสัมภาษณ์ธุรการและครู 5 คน สิ้นภาคเรียน',
+          baseline: 'ปัจจุบันมีไฟล์รวมอย่างน้อย 4 ไฟล์ต่อภาคเรียน'
+        }
+      ],
+      roles: [
+        {
+          name: 'ผู้อำนวยการ', key: 'role = director',
+          sees: 'ทุกห้อง ทุกครู ทุกตัวชี้วัด รวมคะแนนนิเทศและบันทึกพฤติกรรมทั้งโรงเรียน',
+          does: 'ดู Dashboard ไล่ลงรายห้อง มอบหมายงานให้ครู ปิดรายการที่ต้องจัดการ ส่งออกรายงาน',
+          cannot: 'แก้ผลประเมินย้อนหลังแทนครู'
+        },
+        {
+          name: 'ครู', key: 'role = teacher',
+          sees: 'ห้องที่ตัวเองเป็นครูประจำชั้นหรือสอนอยู่ งานที่ได้รับมอบหมาย และคะแนนนิเทศของตัวเองเท่านั้น',
+          does: 'กรอกผลประเมิน บันทึกพฤติกรรม บันทึกการมีส่วนร่วมผู้ปกครอง ปิดงานที่ได้รับมอบหมาย',
+          cannot: 'ดูคะแนนนิเทศของครูคนอื่น'
+        },
+        {
+          name: 'ธุรการ', key: 'role = staff',
+          sees: 'ข้อมูลหลักทั้งหมด ทะเบียนนักเรียน สถานะการนำเข้าไฟล์ และบันทึกการมีส่วนร่วมผู้ปกครอง',
+          does: 'นำเข้า Excel แก้ทะเบียน กรอกแทนครูได้ทุกฟอร์ม โดยระบบเก็บว่าเป็นการกรอกแทน',
+          cannot: 'มอบหมายงานให้ครู'
+        }
+      ],
+      screens: [
+        {
+          id: 'S1', name: 'นำเข้าข้อมูลหลัก', who: 'ธุรการ', device: 'Desktop',
+          purpose: 'อัปโหลดไฟล์ Excel ครู ห้องเรียน และนักเรียน ตรวจข้อผิดพลาดก่อนยืนยัน',
+          fields: [
+            { n: 'ไฟล์ Excel', t: 'file .xlsx', req: 'บังคับ', note: 'สามชีต: teachers, classrooms, students' },
+            { n: 'ปีการศึกษา', t: 'int (พ.ศ.)', req: 'บังคับ', note: 'เช่น 2569' },
+            { n: 'ภาคเรียน', t: 'enum', req: 'บังคับ', note: '1 หรือ 2' },
+            { n: 'โหมดนำเข้า', t: 'enum', req: 'บังคับ', note: 'เพิ่มใหม่ / แทนที่ทั้งหมด' },
+            { n: 'ผลการตรวจ', t: 'read-only', req: '—', note: 'จำนวนแถวผ่าน ไม่ผ่าน และเหตุผลรายแถว' }
+          ]
+        },
+        {
+          id: 'S2', name: 'Dashboard สรุปผล', who: 'ผอ. / ธุรการ', device: 'Desktop + Mobile',
+          purpose: 'หน้าแรกหลังล็อกอินของผู้อำนวยการ ตัวชี้วัดสี่ตัว ตารางรายห้อง และรายการที่ต้องจัดการ',
+          fields: [
+            { n: 'ตัวกรองภาคเรียน', t: 'enum', req: 'บังคับ', note: 'ค่าเริ่มต้นคือภาคเรียนปัจจุบัน' },
+            { n: 'ตัวกรองระดับชั้น', t: 'enum', req: '—', note: 'ทุกระดับ / ประถม / มัธยม / รายห้อง' },
+            { n: 'การ์ดตัวชี้วัด', t: 'computed', req: '—', note: 'ค่าเทียบเป้า ทิศทาง และแนวโน้ม 10 จุดล่าสุด' },
+            { n: 'ตารางรายห้อง', t: 'computed', req: '—', note: 'ห้อง ครูประจำชั้น 4 ตัวชี้วัด สถานะ' },
+            { n: 'รายการที่ต้องจัดการ', t: 'computed', req: '—', note: 'มาจากกฎ R7 คลิกแล้วไปหน้ารายห้อง' },
+            { n: 'ส่งออก', t: 'action', req: '—', note: 'PDF หน้าปัจจุบัน และ Excel ตารางรายห้อง' }
+          ]
+        },
+        {
+          id: 'S3', name: 'หน้ารายห้อง', who: 'ผอ. / ครูของห้องนั้น', device: 'Desktop + Mobile',
+          purpose: 'ปลายทางของทุกการคลิกจาก Dashboard แสดงแนวโน้มของห้อง รายชื่อนักเรียนที่ต่ำกว่าเกณฑ์ และปุ่มมอบหมายงาน',
+          fields: [
+            { n: 'หัวห้อง', t: 'read-only', req: '—', note: 'ชื่อห้อง ครูประจำชั้น จำนวนนักเรียน' },
+            { n: 'กราฟ 4 ตัวชี้วัด', t: 'computed', req: '—', note: 'รายจุดตรวจของภาคเรียนที่เลือก' },
+            { n: 'นักเรียนต่ำกว่าเกณฑ์', t: 'list', req: '—', note: 'ชื่อ คะแนนล่าสุด จำนวนจุดตรวจที่ไม่ผ่าน' },
+            { n: 'ประวัติบันทึกพฤติกรรม', t: 'list', req: '—', note: 'เรียงใหม่ไปเก่า 20 รายการล่าสุด' },
+            { n: 'มอบหมายงาน', t: 'action', req: '—', note: 'เปิดฟอร์ม S6 โดยเติมห้องและครูให้อัตโนมัติ' }
+          ]
+        },
+        {
+          id: 'S4', name: 'ฟอร์มผลประเมิน', who: 'ครู (ธุรการกรอกแทนได้)', device: 'Mobile first',
+          purpose: 'กรอกผลนักเรียนทั้งห้องในหนึ่งจุดตรวจ ใช้เวลาไม่เกิน 5 นาทีต่อห้อง',
+          fields: [
+            { n: 'ห้องเรียน', t: 'ref classroom', req: 'บังคับ', note: 'ครูเห็นเฉพาะห้องของตัวเอง' },
+            { n: 'จุดตรวจ', t: 'enum 1-4', req: 'บังคับ', note: 'สัปดาห์ที่ 4, 8, 12, 16 ของภาคเรียน' },
+            { n: 'กลุ่มสาระ', t: 'enum', req: 'บังคับ', note: '8 กลุ่มสาระตามหลักสูตรแกนกลาง' },
+            { n: 'คะแนนรายนักเรียน', t: 'int 0-100', req: 'บังคับ', note: 'กรอกทีละคน ค้างไว้เป็นฉบับร่างได้' },
+            { n: 'หมายเหตุ', t: 'text 280', req: '—', note: 'เหตุผลกรณีคะแนนตกผิดปกติ' },
+            { n: 'ผู้บันทึก', t: 'auto', req: 'auto', note: 'เก็บทั้งเจ้าของห้องและผู้กรอกแทน' }
+          ]
+        },
+        {
+          id: 'S5', name: 'ฟอร์มพฤติกรรม / นิเทศ / ผู้ปกครอง', who: 'ครู · หัวหน้ากลุ่มสาระ · ธุรการ', device: 'Mobile first',
+          purpose: 'สามฟอร์มสั้นที่ใช้โครงเดียวกัน ต่างกันที่ชุดฟิลด์ตรงกลาง',
+          fields: [
+            { n: 'พฤติกรรม: นักเรียน', t: 'ref student', req: 'บังคับ', note: 'ค้นด้วยชื่อหรือเลขประจำตัว' },
+            { n: 'พฤติกรรม: ประเภทเหตุ', t: 'enum', req: 'บังคับ', note: 'มาสาย ขาดเรียน แต่งกาย ทะเลาะวิวาท อื่น ๆ' },
+            { n: 'พฤติกรรม: ระดับ', t: 'enum 1-3', req: 'บังคับ', note: '1 เตือน 2 บันทึก 3 เชิญผู้ปกครอง' },
+            { n: 'นิเทศ: ครูที่ถูกนิเทศ', t: 'ref teacher', req: 'บังคับ', note: 'ผู้นิเทศคือหัวหน้ากลุ่มสาระ' },
+            { n: 'นิเทศ: 5 หัวข้อ', t: 'int 1-5 ×5', req: 'บังคับ', note: 'แผนการสอน สื่อ การจัดการชั้น การวัดผล การมีส่วนร่วมของผู้เรียน' },
+            { n: 'ผู้ปกครอง: ช่องทาง', t: 'enum ×6', req: 'บังคับ', note: 'Line OA ประชุม เซ็นการบ้าน อาสา แบบสอบถาม ชำระตรงเวลา' },
+            { n: 'ผู้ปกครอง: ผลลัพธ์', t: 'boolean', req: 'บังคับ', note: 'ทำแล้ว / ยังไม่ทำ ต่อผู้ปกครองหนึ่งคนต่อรอบ' }
+          ]
+        },
+        {
+          id: 'S6', name: 'งานของครู', who: 'ผอ. มอบหมาย · ครูปิดงาน', device: 'Desktop + Mobile',
+          purpose: 'Module 02 ฉบับย่อใน MVP รายการงานพร้อมสถานะสามระดับ',
+          fields: [
+            { n: 'ชื่องาน', t: 'text 120', req: 'บังคับ', note: '—' },
+            { n: 'ผู้รับผิดชอบ', t: 'ref teacher[]', req: 'บังคับ', note: 'รายคนหรือทั้งกลุ่มสาระ' },
+            { n: 'วันครบกำหนด', t: 'date', req: 'บังคับ', note: 'ห้ามย้อนหลัง' },
+            { n: 'ที่มา', t: 'enum', req: '—', note: 'มอบหมายเอง หรือมาจากรายการที่ต้องจัดการ' },
+            { n: 'สถานะ', t: 'enum', req: 'auto', note: 'ค้าง / เสร็จ / เลยกำหนด คำนวณตามกฎ R8' },
+            { n: 'หลักฐานแนบ', t: 'file[]', req: '—', note: 'รูปหรือ PDF ไม่เกิน 5 ไฟล์' }
+          ]
+        }
+      ],
+      rules: [
+        { no: 'R1', title: 'ผลประเมินเทียบเป้าหมาย', body: 'ใช้สัดส่วนนักเรียนที่ผ่านเกณฑ์ ไม่ใช่คะแนนเฉลี่ย เพื่อไม่ให้นักเรียนเก่งไม่กี่คนกลบภาพรวม', formula: 'assessment_pct = count(คะแนน >= 70) / count(นักเรียนที่มีคะแนน) × 100 · เป้าหมายภาคเรียน = 82' },
+        { no: 'R2', title: 'ดัชนีพฤติกรรม', body: 'เริ่มที่ 100 ต่อห้องในแต่ละภาคเรียน หักตามระดับของเหตุ และฟื้นคืนช้า ๆ เมื่อไม่มีเหตุใหม่', formula: 'behaviour = 100 − Σ(ระดับ1 ×2, ระดับ2 ×5, ระดับ3 ×10) + (สัปดาห์ที่ไม่มีเหตุ ×1) · ต่ำสุด 0 สูงสุด 100' },
+        { no: 'R3', title: 'คะแนนนิเทศ', body: 'เฉลี่ยจากห้าหัวข้อของรอบนิเทศล่าสุด สองรอบต่อภาคเรียน ถ้ายังไม่มีรอบที่สองให้ใช้รอบแรก', formula: 'observation = average(5 หัวข้อ) ทศนิยม 1 ตำแหน่ง · เกณฑ์โรงเรียน = 4.0 · ต่ำกว่า 3.5 เข้ารอบโค้ช' },
+        { no: 'R4', title: 'ดัชนีการมีส่วนร่วมผู้ปกครอง', body: 'ถ่วงน้ำหนักหกช่องทางตามความสำคัญที่ตกลงกัน ค่าที่ได้คือร้อยละของผู้ปกครองในห้องนั้น', formula: 'parent = Line 20% + ประชุม 25% + เซ็นการบ้าน 20% + ชำระตรงเวลา 15% + อาสา 10% + แบบสอบถาม 10% · เป้าหมาย 70' },
+        { no: 'R5', title: 'ดัชนีรวมของห้อง', body: 'ใช้จัดอันดับในหน้า Matrix เท่านั้น ไม่ใช้ตัดสินครู', formula: 'index = average(assessment_pct, behaviour, observation × 20, parent) ปัดเป็นจำนวนเต็ม' },
+        { no: 'R6', title: 'เกณฑ์สีและสถานะ', body: 'ใช้ชุดเดียวกันทุกหน้าจอ ห้ามกำหนดสีเฉพาะหน้า', formula: 'บนเป้า: ≥ เป้าหมาย · เฝ้าระวัง: ต่ำกว่าเป้า 1–5 จุด · เสี่ยง: ต่ำกว่าเป้ามากกว่า 5 จุด หรือถอยลงสองจุดตรวจติดกัน' },
+        { no: 'R7', title: 'รายการที่ต้องจัดการเกิดขึ้นเมื่อไร', body: 'ระบบสร้างรายการอัตโนมัติ ไม่ต้องให้คนกดสร้าง ปิดได้โดยผู้อำนวยการเท่านั้น', formula: 'ทริกเกอร์: ห้องเข้าเกณฑ์เสี่ยงตาม R6 · คะแนนนิเทศ < 3.5 · เหตุพฤติกรรมระดับ 3 · ครูไม่ส่งผลประเมินเกิน 7 วันหลังจุดตรวจ' },
+        { no: 'R8', title: 'สถานะงานครู', body: 'คำนวณจากวันครบกำหนดเทียบวันปัจจุบัน ไม่ต้องให้ครูเปลี่ยนเอง นอกจากกดว่าเสร็จ', formula: 'เสร็จ: มี completed_at · เลยกำหนด: ยังไม่เสร็จ และ due_date < วันนี้ · ค้าง: นอกนั้น' },
+        { no: 'R9', title: 'หน้าต่างแก้ไขย้อนหลัง', body: 'ให้แก้ได้พอสมควรแต่ต้องตรวจสอบได้ ทุกการแก้เก็บประวัติเดิมไว้', formula: 'ครูแก้เองได้ภายใน 7 วันนับจากบันทึก · เกินกว่านั้นต้องให้ธุรการแก้และระบุเหตุผล · เก็บ edit log ทุกครั้ง' }
+      ],
+      flows: [
+        {
+          actor: 'ครู', title: 'บันทึกผลประจำจุดตรวจ', freq: 'สี่ครั้งต่อภาคเรียน · บนมือถือ',
+          steps: [
+            { n: '1', do: 'เข้าสู่ระบบด้วยอีเมลโรงเรียน', screen: 'S0 login' },
+            { n: '2', do: 'เห็นงานของฉันและจุดตรวจที่ใกล้ครบกำหนด', screen: 'S6 งานของครู' },
+            { n: '3', do: 'เปิดฟอร์มผลประเมิน กรอกคะแนนทั้งห้อง', screen: 'S4 ฟอร์มผลประเมิน' },
+            { n: '4', do: 'บันทึกร่างหรือส่ง ระบบยืนยันว่ากรอกครบกี่คน', screen: 'S4' },
+            { n: '5', do: 'เห็นผลของห้องตัวเองอัปเดตทันที', screen: 'S3 หน้ารายห้อง' }
+          ],
+          end: 'ตัวชี้วัดของห้องเปลี่ยนค่า และงานที่ค้างถูกปิดอัตโนมัติ'
+        },
+        {
+          actor: 'ผู้อำนวยการ', title: 'ตรวจภาพรวมและสั่งการ', freq: 'สัปดาห์ละ 2–3 ครั้ง · เดสก์ท็อป',
+          steps: [
+            { n: '1', do: 'เปิด Dashboard เห็นสี่ตัวชี้วัดและรายการที่ต้องจัดการ', screen: 'S2 Dashboard' },
+            { n: '2', do: 'คลิกห้องที่เป็นสีเสี่ยง', screen: 'S2 → S3' },
+            { n: '3', do: 'ดูแนวโน้มและรายชื่อนักเรียนที่ต่ำกว่าเกณฑ์', screen: 'S3 หน้ารายห้อง' },
+            { n: '4', do: 'มอบหมายงานให้ครูประจำชั้นพร้อมวันครบกำหนด', screen: 'S6 งานของครู' },
+            { n: '5', do: 'ปิดรายการที่ต้องจัดการเมื่อครูส่งงานแล้ว', screen: 'S2' }
+          ],
+          end: 'รายการหายจาก Dashboard และมีบันทึกว่าใครปิดเมื่อไร'
+        },
+        {
+          actor: 'ธุรการ', title: 'ตั้งต้นภาคเรียนและกรอกแทน', freq: 'ต้นภาคเรียน + รายสัปดาห์',
+          steps: [
+            { n: '1', do: 'อัปโหลดไฟล์ Excel สามชีต', screen: 'S1 นำเข้าข้อมูลหลัก' },
+            { n: '2', do: 'ตรวจรายการที่ระบบตีกลับและแก้ในไฟล์หรือในระบบ', screen: 'S1' },
+            { n: '3', do: 'ยืนยันการนำเข้า ระบบผูกครูกับห้องให้', screen: 'S1' },
+            { n: '4', do: 'บันทึกการมีส่วนร่วมผู้ปกครองรายสัปดาห์', screen: 'S5 ฟอร์มผู้ปกครอง' },
+            { n: '5', do: 'กรอกแทนครูที่ยังไม่ส่ง โดยระบบระบุว่าเป็นการกรอกแทน', screen: 'S4 / S5' }
+          ],
+          end: 'ข้อมูลหลักพร้อมใช้ และไม่มีจุดตรวจไหนว่างเกิน 7 วัน'
+        }
+      ],
+      assumptions: [
+        { no: 'A1', q: 'เกณฑ์ผ่านของผลประเมินคือ 70 คะแนน', value: 'ผ่าน = 70 ขึ้นไป · เป้าหมายห้อง = 82% ของนักเรียน', risk: 'ถ้าโรงเรียนใช้เกณฑ์อื่น ตัวเลขบน Dashboard จะเพี้ยนทั้งหน้า แก้ที่ R1 จุดเดียว' },
+        { no: 'A2', q: 'จุดตรวจมี 4 ครั้งต่อภาคเรียน', value: 'สัปดาห์ที่ 4, 8, 12, 16 · ภาคเรียน 1 พ.ค.–ก.ย. · ภาคเรียน 2 พ.ย.–มี.ค.', risk: 'กระทบตารางแจ้งเตือนครูและกราฟแนวโน้ม' },
+        { no: 'A3', q: 'คะแนนพฤติกรรมเริ่มที่ 100 แล้วหักลบ', value: 'หัก 2 / 5 / 10 ตามระดับ ฟื้นสัปดาห์ละ 1', risk: 'ถ้าโรงเรียนให้คะแนนตรงแทนการหัก ต้องเปลี่ยนทั้งฟอร์มและ R2' },
+        { no: 'A4', q: 'แบบนิเทศมี 5 หัวข้อ ผู้นิเทศคือหัวหน้ากลุ่มสาระ', value: '5 หัวข้อ × ระดับ 1–5 · 2 รอบต่อภาคเรียน', risk: 'ถ้าใช้แบบฟอร์มของเขตพื้นที่ จำนวนหัวข้อและน้ำหนักจะต่างไป' },
+        { no: 'A5', q: 'น้ำหนักหกช่องทางของผู้ปกครอง', value: '20 / 25 / 20 / 15 / 10 / 10 ตาม R4', risk: 'เปลี่ยนน้ำหนักได้ทันทีโดยไม่กระทบโครงสร้างข้อมูล' },
+        { no: 'A6', q: 'สถานะการชำระค่าธรรมเนียมมาจากไหน', value: 'นำเข้าเป็นไฟล์ Excel จากฝ่ายการเงินเดือนละครั้ง · MVP ไม่ทำโมดูลการเงิน', risk: 'ถ้าต้องดึงสดจากระบบการเงิน จะกลายเป็นงานเชื่อมระบบใน Wave 2' }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>
