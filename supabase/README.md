@@ -4,10 +4,9 @@ Designed against `Spec v1 - Module 01.dc.html` (screens S1–S6, rules R1–R9,
 assumptions A1–A6) and the record shapes the app already consumes in
 [`app/src/data/schema.js`](../app/src/data/schema.js).
 
-> **Not yet applied.** The Supabase connector was not available in the session
-> that produced these files, and no Postgres, Docker or Supabase CLI is
-> installed on this machine, so **none of this SQL has been executed or tested**.
-> It has been reviewed by hand, not run. Expect to fix something on first apply.
+**Applied and verified** on project `pqejeincwvyfhwragcth` (Postgres 17.6).
+27 tables, 12 views, 57 RLS policies, and a seed whose every figure matches the
+running app. The Supabase security advisor reports zero findings.
 
 ## Apply it
 
@@ -30,13 +29,26 @@ failure rolls that file back rather than leaving the database half-loaded.
 | 2 | `migrations/0002_reference_data.sql` | Subjects, incident types and levels, observation topics, parent channels |
 | 3 | `migrations/0003_views.sql` | R1–R8 as views and functions, grants |
 | 4 | `migrations/0004_rls.sql` | Row level security — the spec's permission table |
-| 5 | `seed/01` … `seed/07` | The seed, split into pastable parts (≤ 700 KB each) |
-| 6 | `verify.sql` | Read-only checks; expected numbers are in its header |
+| 5 | `migrations/0005_harden_functions.sql` | Advisor fixes: helpers out of the REST surface, `search_path` pinned |
+| 6 | `seed_native.sql` | **The seed that was applied.** One paste, ~25 KB |
+| 7 | `verify.sql` | Read-only checks; expected numbers are in its header |
 
-**Use `seed/`, not `seed.sql`, in the browser.** `seed.sql` is the same
-statements in one 4.1 MB file — fine for psql, but a paste that size stalls the
-editor. Part 01 carries the `truncate`, so re-running from 01 is always safe;
-part 07 ends by calling `refresh_action_items()`, which raises the R7 items.
+### Two seeds, and which to use
+
+`seed_native.sql` is the one that ran. It computes the dataset in SQL — rank
+based mark allocation, `hashtext()` for the individual scores — rather than
+shipping literal rows, so it is 25 KB instead of 4.1 MB and pastes into the
+editor in one go. Re-running is deterministic.
+
+`seed.sql` (and its split parts in `seed/`) is the older route: a literal dump
+generated from the app's fixture by `scripts/generate-seed.mjs`. It is kept
+because `scripts/check-seed.mjs` validates it against the schema without a
+database, which is useful when the app's fixture changes. Load it with psql, not
+the browser editor.
+
+The two agree on every aggregate — class metrics, observation bands, channel
+rates — because both are solved backwards from the same blueprint. They differ
+in which individual student holds which mark, so do not expect row-level parity.
 
 `verify.sql` uses `\echo`, a psql meta-command. In the SQL editor, run its
 queries individually and ignore the `\echo` lines.
@@ -53,6 +65,43 @@ schema's constraints without a database: every foreign key resolves, every enum
 value exists in its reference table, every unique constraint holds. It is worth
 running before every apply — it caught a self-observation that would have failed
 the `observations_not_self` check partway through the import.
+
+## Connecting the app, and checking that it connected
+
+Credentials live in `app/.env` and nowhere else. That file is git-ignored;
+`app/.env.example` is committed and must never hold a real value.
+
+```bash
+cd app
+cp .env.example .env      # then paste the two values
+npm run check:supabase
+```
+
+Both values come from the Supabase dashboard → **Project Settings → API**:
+
+| Variable | Where it comes from |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://pqejeincwvyfhwragcth.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Project Settings → API → the publishable / anon key |
+
+`npm run check:supabase` makes three calls and prints pass or fail. It never
+prints the key — only a short SHA-256 fingerprint, so two machines can confirm
+they hold the same value without either showing it.
+
+1. **reachable** — the URL and key are a valid pair and PostgREST answers.
+2. **schema applied** — `public.subjects` exists, so the migrations reached
+   *this* project and not another one.
+3. **rls guard** — the anon key reads no student, mark or observation rows.
+
+The third check is the one that matters. Vite inlines every `VITE_*` variable
+into the built bundle, so the anon key is readable by anyone who opens the
+site's JavaScript. That is normal and safe **only because** row level security
+is on and the anon role can read nothing — which is exactly what the check
+asserts. If it ever fails, stop and fix the policies before shipping.
+
+The `service_role` key bypasses RLS entirely. It must never appear in `.env`
+with a `VITE_` prefix, or in this app at all — keep it to an edge function, a
+migration job, or your own shell.
 
 ## Shape
 
@@ -132,7 +181,7 @@ RLS is on for every table, and the policies are section 02 of the spec:
 | Close an action item | ✅ | ❌ | ❌ |
 | Import master data | ❌ | ❌ | ✅ |
 
-Two things that are easy to get wrong and are handled here:
+Four things that are easy to get wrong and are handled here:
 
 - **Views carry `security_invoker = true`.** A Postgres view otherwise runs as
   its owner and quietly bypasses the RLS of every table underneath it, which
@@ -140,8 +189,18 @@ Two things that are easy to get wrong and are handled here:
 - **Correlated references in policies are table-qualified.** `task_id` exists on
   both `task_attachments` and `task_assignees`; an unqualified
   `ta.task_id = task_id` binds to the inner table and is true for every row.
+- **The RLS helpers live in a `private` schema** (migration 0005). As
+  `SECURITY DEFINER` functions in `public` they were exposed as
+  `/rest/v1/rpc/...` endpoints callable by anon. A policy stores the function's
+  OID, so moving them kept every policy working while taking them off the API.
+- **Every function pins `search_path`**, so a caller cannot shadow `public` with
+  their own schema and change what the function resolves to.
 
 `service_role` bypasses RLS, so seeding and scheduled jobs are unaffected.
+
+Verified on the live database rather than assumed: impersonating `anon`, and
+then `authenticated` with no matching `teachers` row, returns zero rows from
+classrooms, students, assessments and observations.
 
 **Until Supabase auth is wired up**, `teachers.auth_user_id` is null for
 everyone and the policies correctly deny everything to `anon` and
