@@ -12,8 +12,8 @@ import {
   TARGETS, STATUS, PARENT_CHANNELS, OBSERVATION_TOPICS,
   BEHAVIOUR_START, BEHAVIOUR_RECOVERY_PER_WEEK, INCIDENT_LEVELS,
   SUBMISSION_GRACE_DAYS, EDIT_WINDOW_DAYS, TASK_STATUS,
-} from '../data/constants';
-import { CHECKPOINT_DATES } from '../data/mockData';
+} from '../data/constants.js';
+import { CHECKPOINT_DATES } from '../data/mockData.js';
 
 const DAY = 86400000;
 const WEEK = DAY * 7;
