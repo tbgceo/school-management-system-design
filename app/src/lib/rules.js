@@ -65,17 +65,22 @@ export function behaviourIndex(incidents, asOf = AS_OF) {
 
 /* ================================================================== *
  * R3 - observation score
- * Mean of the five topics from the latest round. Two rounds a term; if the
- * second has not happened yet the first one stands.
+ * Mean of the five topics across every round held so far this semester.
+ * Two rounds a term; until the second happens the first one stands on its own.
  *
- * Note: with five integer topics the mean can only land on a 0.2 step, so a
- * value such as 4.3 is not reachable from a single round.
+ * Averaging both rounds rather than taking only the latest is deliberate. Five
+ * integer topics from a single round can only average onto a 0.2 step, which put
+ * the design's 4.3 out of reach; ten scores across two rounds move in 0.1 steps.
+ * It also stops one weak round from erasing a term's worth of evidence.
  * ================================================================== */
 export function observationScore(rows, asOf = AS_OF) {
   const done = rows.filter((r) => new Date(r.recordedAt) <= asOf);
   if (!done.length) return null;
-  const latest = done.reduce((a, b) => (b.round > a.round ? b : a));
-  const values = OBSERVATION_TOPICS.map((t) => latest.scores[t.id]).filter((v) => typeof v === 'number');
+
+  const values = done.flatMap((r) => OBSERVATION_TOPICS
+    .map((t) => r.scores[t.id])
+    .filter((v) => typeof v === 'number'));
+
   if (!values.length) return null;
   return values.reduce((a, b) => a + b, 0) / values.length;
 }

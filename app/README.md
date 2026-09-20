@@ -44,6 +44,14 @@ src/lib/rules.js        R1–R9 and the selectors the screens consume
 src/store/AppContext.jsx  one reducer; every write is a named action
 ```
 
+### R3 differs from the written spec
+
+Spec v1 says the observation score is the mean of the latest round only. This build averages
+the five topics across **both** rounds. A single round of five integer scores can only average
+onto a 0.2 step, which made the design's 4.3 unreachable; ten scores across two rounds move in
+0.1 steps. It also stops one weak round from erasing a term of evidence. Confirm this with the
+school before the rule goes live — it changes who crosses the 3.5 coaching threshold.
+
 Nothing on screen is a stored metric. The generator emits flat rows — assessments, incidents,
 observations, parent-engagement entries — and `rules.js` recomputes every figure from them on
 each render. Two consequences worth keeping:
@@ -56,10 +64,12 @@ each render. Two consequences worth keeping:
 
 ## Where the app departs from the mockup, and why
 
-- **Observation scores land on 0.2 steps.** R3 averages five integer topics from one round, so
-  4.3 is not reachable; it renders as 4.4. The rule was followed over the mockup's number.
 - **Sparklines have four bars, not ten.** A2 puts four assessment checkpoints in a semester, and
   the bars are the real series rather than an invented one.
+- **The school-wide observation KPI reads 3.8, not the mockup's 3.9.** It is the mean across the
+  classes currently in view, so it responds to the level filter the way the other three KPIs do.
+  Averaged across all 42 teaching staff instead it would be 4.0. Neither basis produces 3.9; the
+  per-class basis was kept because it is the one the filter can act on.
 - **Student and teacher totals are computed.** 314 students across the nine classes, not the
   612 in the mockup's headline, because the roster is what the class rows are built from.
 - **Row status follows assessment.** R6 defines the bands; the dashboard's Status column applies

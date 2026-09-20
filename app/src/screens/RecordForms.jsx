@@ -367,7 +367,9 @@ function ObservationForm({ db, user, actions }) {
       </Card>
 
       <Card>
-        <CardLabel sub={`คะแนนเฉลี่ยขณะนี้ ${avg.toFixed(1)} · เกณฑ์โรงเรียน ${TARGETS.observation.toFixed(1)}`}>
+        <CardLabel
+          sub={`เฉลี่ยรอบนี้ ${avg.toFixed(1)} · เกณฑ์โรงเรียน ${TARGETS.observation.toFixed(1)} · คะแนน R3 เฉลี่ยจากทั้งสองรอบ`}
+        >
           หัวข้อประเมิน
         </CardLabel>
         {OBSERVATION_TOPICS.map((t) => (
@@ -391,7 +393,8 @@ function ObservationForm({ db, user, actions }) {
         {avg < TARGETS.coaching && (
           <div style={{ marginTop: 14 }}>
             <Notice tone="warn">
-              ต่ำกว่า {TARGETS.coaching} · ระบบจะสร้างรายการเข้ารอบโค้ชชิ่งให้อัตโนมัติ (R3, R7)
+              รอบนี้ต่ำกว่า {TARGETS.coaching} · ถ้าค่าเฉลี่ยทั้งสองรอบยังต่ำกว่าเกณฑ์
+              ระบบจะสร้างรายการเข้ารอบโค้ชชิ่งให้อัตโนมัติ (R3, R7)
             </Notice>
           </div>
         )}

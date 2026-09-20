@@ -123,17 +123,30 @@ function solveIncidents(target) {
 }
 
 /**
- * R3 solver. Five integer topic scores, so the mean can only land on a 0.2 step.
- * A design value like 4.3 is therefore not reachable from one round and snaps to 4.4.
+ * R3 solver.
+ *
+ * R3 averages all ten topic scores from the two rounds, so the mean moves in 0.1 steps and a
+ * target such as 4.3 is reachable. Split the required ten-score total across the two rounds,
+ * keeping round 2 at or above round 1 so the term reads as improvement.
  */
-function solveTopicScores(target) {
-  const sum = Math.max(5, Math.min(25, Math.round(target * OBSERVATION_TOPICS.length)));
-  const base = Math.floor(sum / OBSERVATION_TOPICS.length);
-  let remainder = sum - base * OBSERVATION_TOPICS.length;
-  return OBSERVATION_TOPICS.map((t) => {
-    let v = base;
-    if (remainder > 0) { v += 1; remainder -= 1; }
-    return [t.id, Math.max(1, Math.min(5, v))];
+function solveRoundSums(target) {
+  const total = Math.max(10, Math.min(50, Math.round(target * 2 * OBSERVATION_TOPICS.length)));
+  let first = Math.floor(total / 2);
+  let second = total - first;
+  // A dead-even split hides the trend; nudge it apart when there is headroom.
+  if (first === second && second < 25 && first > 5) { first -= 1; second += 1; }
+  return [first, second];
+}
+
+/** Spread one round's total across the five topics, rotating which ones carry the remainder. */
+function distributeTopics(sum, offset = 0) {
+  const n = OBSERVATION_TOPICS.length;
+  const safe = Math.max(n, Math.min(n * 5, sum));
+  const base = Math.floor(safe / n);
+  const remainder = safe - base * n;
+  return OBSERVATION_TOPICS.map((t, i) => {
+    const carries = ((i + offset) % n) < remainder;
+    return [t.id, Math.max(1, Math.min(5, base + (carries ? 1 : 0)))];
   });
 }
 
@@ -367,10 +380,9 @@ function buildObservations(teachers, classrooms) {
   let seq = 0;
 
   const scoreFor = (teacherId, target) => {
+    const roundSums = solveRoundSums(target);
     [1, 2].forEach((round) => {
-      // Round 1 sits a notch below round 2, so the trend reads as improvement.
-      const adjusted = round === 1 ? Math.max(1, target - 0.2) : target;
-      const scores = Object.fromEntries(solveTopicScores(adjusted));
+      const scores = Object.fromEntries(distributeTopics(roundSums[round - 1], round));
       seq += 1;
       rows.push({
         id: `obs-${seq}`,
@@ -394,10 +406,11 @@ function buildObservations(teachers, classrooms) {
     (t) => t.role === 'teacher' && !classrooms.some((c) => c.homeroomTeacherId === t.id),
   );
   // Chosen so the four observation bands across all 42 teaching staff come out at
-  // 9 / 16 / 11 / 6, the distribution the approved dashboard shows.
+  // 9 / 16 / 11 / 6, the distribution the approved dashboard shows. The nine homeroom
+  // teachers contribute 1 / 3 / 3 / 2 of that from their own blueprint scores.
   const bandPlan = [
-    ...Array(8).fill(4.6), ...Array(12).fill(4.2),
-    ...Array(9).fill(3.7), ...Array(4).fill(3.2),
+    ...Array(8).fill(4.6), ...Array(13).fill(4.2),
+    ...Array(8).fill(3.7), ...Array(4).fill(3.2),
   ];
   others.forEach((t, i) => scoreFor(t.id, bandPlan[i % bandPlan.length]));
 
