@@ -1,0 +1,24 @@
+# Normalize all text files to LF in the repository and in the working tree.
+# Without this, core.autocrlf=true on Windows checks files out with CRLF,
+# which shows up as whole-file diffs for anyone working on macOS or Linux.
+* text=auto eol=lf
+
+# Text formats in this bundle
+*.html  text
+*.css   text
+*.js    text
+*.json  text
+*.md    text
+
+# Binary - never convert line endings
+.thumbnail  binary
+*.webp      binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
