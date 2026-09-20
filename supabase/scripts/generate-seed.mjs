@@ -14,7 +14,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +26,12 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '../seed.sql');
+const PARTS_DIR = resolve(here, '../seed');
+
+// The Supabase SQL editor runs in a browser and stalls on a multi-megabyte
+// paste, so the same statements are also written as numbered parts sized to
+// paste comfortably. psql and `supabase db push` should use seed.sql.
+const PART_BUDGET = 700 * 1024;
 
 /* ------------------------------------------------------------------ *
  * Deterministic UUIDs
@@ -57,9 +63,13 @@ const bool = (v) => (v ? 'true' : 'false');
 const ts = (v) => (v ? `'${new Date(v).toISOString()}'::timestamptz` : 'null');
 const day = (v) => (v ? `'${new Date(v).toISOString().slice(0, 10)}'::date` : 'null');
 
-/** Chunked multi-row INSERT — one statement per 500 rows keeps the file parseable. */
+/**
+ * Chunked multi-row INSERT. Returns one string per statement rather than one
+ * joined blob, so the part packer below can split a large table across files —
+ * assessments alone is 3.3 MB and would otherwise be indivisible.
+ */
 function insert(table, columns, rows, chunkSize = 500) {
-  if (!rows.length) return `-- ${table}: no rows\n`;
+  if (!rows.length) return [`-- ${table}: no rows\n`];
   const out = [];
   for (let i = 0; i < rows.length; i += chunkSize) {
     const slice = rows.slice(i, i + chunkSize);
@@ -69,7 +79,7 @@ function insert(table, columns, rows, chunkSize = 500) {
       + ';\n',
     );
   }
-  return out.join('\n');
+  return out;
 }
 
 /* ------------------------------------------------------------------ *
@@ -85,7 +95,7 @@ const termEnds = new Date(TERM_START.getTime() + (TERM_WEEKS * 7 - 1) * 86400000
 const sections = [];
 const say = (title) => sections.push(`\n-- ${'-'.repeat(74)}\n-- ${title}\n-- ${'-'.repeat(74)}\n`);
 
-sections.push(`-- ============================================================================
+const HEADER = `-- ============================================================================
 -- TBG School OS — seed data
 --
 -- GENERATED FILE. Do not edit by hand; run:
@@ -98,10 +108,9 @@ sections.push(`-- ==============================================================
 -- Re-runnable: it clears the tables it owns, leaves reference data from
 -- 0002_reference_data.sql alone, and is wrapped in a single transaction.
 -- ============================================================================
+`;
 
-begin;
-
--- Clear in dependency order. Reference tables are untouched.
+const RESET = `-- Clear in dependency order. Reference tables are untouched.
 truncate table
   public.import_errors, public.import_batches, public.edit_log,
   public.task_attachments, public.task_assignees, public.tasks, public.action_items,
@@ -111,29 +120,29 @@ truncate table
   public.policy_settings, public.behaviour_settings, public.metric_targets,
   public.checkpoints, public.terms, public.schools
 restart identity cascade;
-`);
+`;
 
 /* ------------------------------------------------------------------ *
  * School, term, checkpoints, settings
  * ------------------------------------------------------------------ */
 say('School and term');
 
-sections.push(insert('schools', ['id', 'external_ref', 'name_th', 'name_en'], [
+sections.push(...insert('schools', ['id', 'external_ref', 'name_th', 'name_en'], [
   [q(schoolId), q(school.id), q(school.nameTh), q(school.nameEn)],
 ]));
 
-sections.push(insert('terms',
+sections.push(...insert('terms',
   ['id', 'school_id', 'code', 'year', 'term', 'label', 'starts_on', 'ends_on', 'term_weeks', 'is_current'], [
     [q(termId), q(schoolId), q(semester.id), n(semester.year), n(semester.term),
       q(semester.label), day(TERM_START), day(termEnds), n(TERM_WEEKS), bool(true)],
   ]));
 
-sections.push(insert('checkpoints', ['id', 'term_id', 'seq', 'week_no', 'closes_on'],
+sections.push(...insert('checkpoints', ['id', 'term_id', 'seq', 'week_no', 'closes_on'],
   CHECKPOINT_DATES.map((d, i) => [
     q(id(`cp-${CURRENT_SEMESTER}-${i + 1}`)), q(termId), n(i + 1), n(CHECKPOINT_WEEKS[i]), day(d),
   ])));
 
-sections.push(insert('metric_targets', ['term_id', 'metric', 'target'], [
+sections.push(...insert('metric_targets', ['term_id', 'metric', 'target'], [
   [q(termId), q('assessment'), n(TARGETS.assessment)],
   [q(termId), q('behaviour'), n(TARGETS.behaviour)],
   [q(termId), q('observation'), n(TARGETS.observation)],
@@ -142,11 +151,11 @@ sections.push(insert('metric_targets', ['term_id', 'metric', 'target'], [
   [q(termId), q('coaching'), n(TARGETS.coaching)],
 ]));
 
-sections.push(insert('behaviour_settings', ['term_id', 'start_index', 'recovery_per_quiet_week'], [
+sections.push(...insert('behaviour_settings', ['term_id', 'start_index', 'recovery_per_quiet_week'], [
   [q(termId), n(BEHAVIOUR_START), n(BEHAVIOUR_RECOVERY_PER_WEEK)],
 ]));
 
-sections.push(insert('policy_settings', ['term_id', 'edit_window_days', 'submission_grace_days'], [
+sections.push(...insert('policy_settings', ['term_id', 'edit_window_days', 'submission_grace_days'], [
   [q(termId), n(EDIT_WINDOW_DAYS), n(SUBMISSION_GRACE_DAYS)],
 ]));
 
@@ -155,7 +164,7 @@ sections.push(insert('policy_settings', ['term_id', 'edit_window_days', 'submiss
  * ------------------------------------------------------------------ */
 say('Staff — 1 director, 1 office, 42 teaching');
 
-sections.push(insert('teachers',
+sections.push(...insert('teachers',
   ['id', 'school_id', 'external_ref', 'name_th', 'name_en', 'email', 'role', 'subject_id', 'is_department_head'],
   db.teachers.map((t) => [
     q(id(t.id)), q(schoolId), q(t.id), q(t.nameTh), q(t.nameEn), q(t.email),
@@ -164,20 +173,20 @@ sections.push(insert('teachers',
 
 say('Classrooms, students, guardians');
 
-sections.push(insert('classrooms',
+sections.push(...insert('classrooms',
   ['id', 'school_id', 'term_id', 'external_ref', 'name', 'level', 'grade', 'homeroom_teacher_id'],
   db.classrooms.map((c) => [
     q(id(c.id)), q(schoolId), q(termId), q(c.id), q(c.name),
     `'${c.level}'::public.class_level`, n(c.grade), q(id(c.homeroomTeacherId)),
   ])));
 
-sections.push(insert('students',
+sections.push(...insert('students',
   ['id', 'school_id', 'term_id', 'classroom_id', 'external_ref', 'code', 'name_th'],
   db.students.map((s) => [
     q(id(s.id)), q(schoolId), q(termId), q(id(s.classroomId)), q(s.id), q(s.code), q(s.nameTh),
   ])));
 
-sections.push(insert('guardians', ['id', 'school_id', 'student_id', 'name_th'],
+sections.push(...insert('guardians', ['id', 'school_id', 'student_id', 'name_th'],
   db.guardians.map((g) => [
     q(id(g.id)), q(schoolId), q(id(g.studentId)), q(g.nameTh),
   ])));
@@ -187,7 +196,7 @@ sections.push(insert('guardians', ['id', 'school_id', 'student_id', 'name_th'],
  * ------------------------------------------------------------------ */
 say(`Assessments — ${db.assessments.length} marks (student x subject x checkpoint)`);
 
-sections.push(insert('assessments',
+sections.push(...insert('assessments',
   ['id', 'school_id', 'term_id', 'classroom_id', 'student_id', 'subject_id', 'checkpoint',
     'score', 'note', 'teacher_id', 'recorded_by', 'recorded_at'],
   db.assessments.map((a) => [
@@ -198,7 +207,7 @@ sections.push(insert('assessments',
 
 say(`Behaviour incidents — ${db.behaviour.length}`);
 
-sections.push(insert('behaviour_incidents',
+sections.push(...insert('behaviour_incidents',
   ['id', 'school_id', 'term_id', 'classroom_id', 'student_id', 'incident_type_id',
     'level', 'occurred_at', 'note', 'recorded_by'],
   db.behaviour.map((b) => [
@@ -208,7 +217,7 @@ sections.push(insert('behaviour_incidents',
 
 say(`Observations — ${db.observations.length} rounds, ${db.observations.length * 5} topic scores`);
 
-sections.push(insert('observations',
+sections.push(...insert('observations',
   ['id', 'school_id', 'term_id', 'teacher_id', 'observer_id', 'round', 'note', 'recorded_at'],
   db.observations.map((o) => [
     q(id(o.id)), q(schoolId), q(termId), q(id(o.teacherId)), q(id(o.observerId)),
@@ -221,11 +230,11 @@ db.observations.forEach((o) => {
     topicRows.push([q(id(o.id)), q(topicId), n(score)]);
   });
 });
-sections.push(insert('observation_scores', ['observation_id', 'topic_id', 'score'], topicRows, 1000));
+sections.push(...insert('observation_scores', ['observation_id', 'topic_id', 'score'], topicRows, 1000));
 
 say(`Parent engagement — ${db.parentEngagement.length} guardian x channel rows`);
 
-sections.push(insert('parent_engagement',
+sections.push(...insert('parent_engagement',
   ['id', 'school_id', 'term_id', 'classroom_id', 'guardian_id', 'channel_id', 'done', 'recorded_at', 'recorded_by'],
   db.parentEngagement.map((p) => [
     q(id(p.id)), q(schoolId), q(termId), q(id(p.classroomId)), q(id(p.guardianId)),
@@ -237,7 +246,7 @@ sections.push(insert('parent_engagement',
  * ------------------------------------------------------------------ */
 say(`Tasks — ${db.tasks.length}`);
 
-sections.push(insert('tasks',
+sections.push(...insert('tasks',
   ['id', 'school_id', 'term_id', 'title', 'classroom_id', 'due_date', 'source',
     'completed_at', 'completed_by', 'created_by', 'created_at'],
   db.tasks.map((t) => [
@@ -253,20 +262,20 @@ sections.push(insert('tasks',
 
 const assigneeRows = [];
 db.tasks.forEach((t) => t.assigneeIds.forEach((a) => assigneeRows.push([q(id(t.id)), q(id(a))])));
-sections.push(insert('task_assignees', ['task_id', 'teacher_id'], assigneeRows));
+sections.push(...insert('task_assignees', ['task_id', 'teacher_id'], assigneeRows));
 
 const attachmentRows = [];
 db.tasks.forEach((t) => (t.attachments || []).forEach((f, i) => {
   attachmentRows.push([q(id(`att-${t.id}-${i}`)), q(id(t.id)), q(f.name), q(f.kind)]);
 }));
-sections.push(insert('task_attachments', ['id', 'task_id', 'file_name', 'kind'], attachmentRows));
+sections.push(...insert('task_attachments', ['id', 'task_id', 'file_name', 'kind'], attachmentRows));
 
 /* ------------------------------------------------------------------ *
  * Imports
  * ------------------------------------------------------------------ */
 say('Import history (S1)');
 
-sections.push(insert('import_batches',
+sections.push(...insert('import_batches',
   ['id', 'school_id', 'term_id', 'file_name', 'mode', 'rows_ok', 'rows_failed', 'state', 'uploaded_by', 'uploaded_at'],
   db.importBatches.map((b) => [
     q(id(b.id)), q(schoolId), q(termId), q(b.fileName),
@@ -278,7 +287,7 @@ const errorRows = [];
 db.importBatches.forEach((b) => (b.errors || []).forEach((e, i) => {
   errorRows.push([q(id(`imperr-${b.id}-${i}`)), q(id(b.id)), q(e.sheet), n(e.row), q(e.reason)]);
 }));
-sections.push(insert('import_errors', ['id', 'batch_id', 'sheet', 'row_no', 'reason'], errorRows));
+sections.push(...insert('import_errors', ['id', 'batch_id', 'sheet', 'row_no', 'reason'], errorRows));
 
 /* ------------------------------------------------------------------ *
  * R7 and close
@@ -287,19 +296,65 @@ say('R7 — let the rules raise the action items');
 
 sections.push(`select public.refresh_action_items('${termId}'::uuid) as open_action_items;\n`);
 
-sections.push(`
-commit;
-
+const FOOTER = `
 -- Sanity check after loading — these should match the dashboard.
 --   select * from public.v_school_metrics;
 --   select classroom_name, assessment_pct, behaviour_index, observation_score,
 --          parent_index, class_index, class_status
 --     from public.v_class_metrics order by classroom_name;
 --   select * from public.v_observation_bands;
-`);
+`;
 
+/* ------------------------------------------------------------------ *
+ * One file for psql, numbered parts for the browser SQL editor
+ * ------------------------------------------------------------------ */
 mkdirSync(dirname(OUT), { recursive: true });
-writeFileSync(OUT, sections.join('\n'), 'utf8');
+writeFileSync(OUT, [HEADER, 'begin;\n', RESET, ...sections, '\ncommit;', FOOTER].join('\n'), 'utf8');
+
+// Pack the statements in order, starting a new part before the budget is
+// exceeded. Each part is its own transaction, so a failure rolls that part back
+// and you re-run from part 01 rather than ending up half-loaded.
+const blocks = [RESET, ...sections];
+const parts = [];
+let current = [];
+let size = 0;
+
+for (const block of blocks) {
+  if (current.length && size + block.length > PART_BUDGET) {
+    parts.push(current);
+    current = [];
+    size = 0;
+  }
+  current.push(block);
+  size += block.length;
+}
+if (current.length) parts.push(current);
+
+rmSync(PARTS_DIR, { recursive: true, force: true });
+mkdirSync(PARTS_DIR, { recursive: true });
+
+parts.forEach((blocksInPart, i) => {
+  const no = String(i + 1).padStart(2, '0');
+  const body = blocksInPart.join('\n');
+
+  // Name the part after the first section heading it contains, falling back to
+  // the tables it actually inserts into when it is a continuation.
+  const heading = body.match(/^-- -{40,}\r?\n-- (.+?)\r?$/m);
+  const tables = [...new Set([...body.matchAll(/insert into public\.(\w+)/g)].map((m) => m[1]))];
+  const label = heading ? heading[1] : (tables.length ? tables.join(' ') : 'reset');
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 44);
+
+  writeFileSync(resolve(PARTS_DIR, `${no}_${slug}.sql`), [
+    `-- Part ${no} of ${String(parts.length).padStart(2, '0')} — GENERATED, see supabase/scripts/generate-seed.mjs`,
+    `-- Tables: ${tables.length ? tables.join(', ') : 'truncate only'}`,
+    '-- Run the parts in order, one paste per part, after the four migrations.',
+    '',
+    'begin;',
+    body,
+    'commit;',
+    i === parts.length - 1 ? FOOTER : '',
+  ].join('\n'), 'utf8');
+});
 
 const counts = {
   teachers: db.teachers.length,

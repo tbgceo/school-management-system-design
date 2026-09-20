@@ -11,11 +11,18 @@ assumptions A1–A6) and the record shapes the app already consumes in
 
 ## Apply it
 
+### With the CLI or psql
+
 ```bash
 supabase db push
+psql "$SUPABASE_DB_URL" -f supabase/seed.sql
+psql "$SUPABASE_DB_URL" -f supabase/verify.sql
 ```
 
-Or paste the files into the SQL editor, in order:
+### By hand, in the Supabase SQL editor
+
+Run these in order, one paste each. Each file is a single transaction, so a
+failure rolls that file back rather than leaving the database half-loaded.
 
 | Order | File | What it does |
 |---|---|---|
@@ -23,14 +30,29 @@ Or paste the files into the SQL editor, in order:
 | 2 | `migrations/0002_reference_data.sql` | Subjects, incident types and levels, observation topics, parent channels |
 | 3 | `migrations/0003_views.sql` | R1–R8 as views and functions, grants |
 | 4 | `migrations/0004_rls.sql` | Row level security — the spec's permission table |
-| 5 | `seed.sql` | 12,700-odd rows of test data |
-| — | `verify.sql` | Read-only checks with the expected numbers in the header |
+| 5 | `seed/01` … `seed/07` | The seed, split into pastable parts (≤ 700 KB each) |
+| 6 | `verify.sql` | Read-only checks; expected numbers are in its header |
 
-Regenerate the seed after changing the app's fixture:
+**Use `seed/`, not `seed.sql`, in the browser.** `seed.sql` is the same
+statements in one 4.1 MB file — fine for psql, but a paste that size stalls the
+editor. Part 01 carries the `truncate`, so re-running from 01 is always safe;
+part 07 ends by calling `refresh_action_items()`, which raises the R7 items.
+
+`verify.sql` uses `\echo`, a psql meta-command. In the SQL editor, run its
+queries individually and ignore the `\echo` lines.
+
+### After changing the app's fixture
 
 ```bash
-node supabase/scripts/generate-seed.mjs
+node supabase/scripts/generate-seed.mjs   # rewrites seed.sql and seed/
+node supabase/scripts/check-seed.mjs      # 29 static checks, no database needed
 ```
+
+`check-seed.mjs` validates the seed against the reference migration and the
+schema's constraints without a database: every foreign key resolves, every enum
+value exists in its reference table, every unique constraint holds. It is worth
+running before every apply — it caught a self-observation that would have failed
+the `observations_not_self` check partway through the import.
 
 ## Shape
 
