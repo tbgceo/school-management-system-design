@@ -33,7 +33,9 @@ function Shell() {
 export default function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
+      {/* BASE_URL is '/' in dev and '/<repo>/' in a GitHub Pages build, so the
+          router and the asset paths agree wherever the bundle is served from. */}
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Shell />
       </BrowserRouter>
     </AppProvider>

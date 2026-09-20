@@ -4,7 +4,7 @@ Designed against `Spec v1 - Module 01.dc.html` (screens S1–S6, rules R1–R9,
 assumptions A1–A6) and the record shapes the app already consumes in
 [`app/src/data/schema.js`](../app/src/data/schema.js).
 
-**Applied and verified** on project `pqejeincwvyfhwragcth` (Postgres 17.6).
+**Applied and verified** on the school's Supabase project (Postgres 17.6).
 27 tables, 12 views, 57 RLS policies, and a seed whose every figure matches the
 running app. The Supabase security advisor reports zero findings.
 
@@ -81,7 +81,7 @@ Both values come from the Supabase dashboard → **Project Settings → API**:
 
 | Variable | Where it comes from |
 |---|---|
-| `VITE_SUPABASE_URL` | `https://pqejeincwvyfhwragcth.supabase.co` |
+| `VITE_SUPABASE_URL` | your project URL, from the dashboard |
 | `VITE_SUPABASE_ANON_KEY` | Project Settings → API → the publishable / anon key |
 
 `npm run check:supabase` makes three calls and prints pass or fail. It never
