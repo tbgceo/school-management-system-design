@@ -1,29 +1,27 @@
 import { useState } from 'react';
-import { useApp, useActions } from '../store/AppContext';
+import { useApp } from '../store/AppContext';
 import { ACADEMIC_YEAR, SEMESTERS, ROLES } from '../data/constants';
 import { thaiDate } from '../lib/format';
 import { Card, CardLabel, Field, Badge, Notice, Empty } from '../components/Ui';
 
 /**
- * S1 - master data import.
+ * S1 — master data import.
  *
- * The prototype does not parse .xlsx: it validates the file envelope and produces a row
- * report so the confirm-then-commit flow is real. Swapping in a parser (SheetJS server side,
- * or the SGS/DMC connector from Wave 2) replaces `inspect` only.
+ * The prototype does not parse .xlsx: it validates the file envelope and
+ * produces a row report so the confirm-then-commit flow is real, then records
+ * the attempt in import_batches. Replacing `inspect()` with a real parser (or
+ * the SGS/DMC connector from Wave 2) is the only change needed.
+ *
+ * Note that the rows themselves are not written from the browser. Master data
+ * has no API write policy on purpose — the roster is loaded by a job running as
+ * service_role, and this screen records that it happened.
  */
 const REQUIRED_SHEETS = ['teachers', 'classrooms', 'students'];
 
 function inspect(file) {
-  const okExt = /\.xlsx$/i.test(file.name);
-  if (!okExt) {
-    return {
-      rowsOk: 0,
-      rowsFailed: 0,
-      fatal: 'ไฟล์ต้องเป็นนามสกุล .xlsx เท่านั้น',
-      errors: [],
-    };
+  if (!/\.xlsx$/i.test(file.name)) {
+    return { rowsOk: 0, rowsFailed: 0, fatal: 'ไฟล์ต้องเป็นนามสกุล .xlsx เท่านั้น', errors: [] };
   }
-  // Deterministic stand-in for a real parse, derived from the file size.
   const rows = 240 + (file.size % 160);
   const failed = file.size % 7 === 0 ? 0 : (file.size % 5);
   const errors = Array.from({ length: failed }, (_, i) => ({
@@ -41,15 +39,15 @@ function inspect(file) {
 }
 
 export default function ImportData() {
-  const { user, semesterId, db } = useApp();
-  const { confirmImport } = useActions();
+  const { user, semesterId, importBatches, confirmImport } = useApp();
   const [file, setFile] = useState(null);
   const [report, setReport] = useState(null);
   const [mode, setMode] = useState('append');
   const [year, setYear] = useState(ACADEMIC_YEAR);
-  const [term, setTerm] = useState(SEMESTERS.find((s) => s.id === semesterId).term);
+  const [term, setTerm] = useState(SEMESTERS.find((s) => s.id === semesterId)?.term ?? 1);
+  const [busy, setBusy] = useState(false);
 
-  const allowed = ROLES[user.role].canImport;
+  const allowed = user && ROLES[user.role].canImport;
 
   function onPick(e) {
     const f = e.target.files[0];
@@ -57,18 +55,18 @@ export default function ImportData() {
     setReport(f ? inspect(f) : null);
   }
 
-  function onConfirm() {
+  async function onConfirm() {
     if (!report || report.fatal) return;
-    confirmImport({
+    setBusy(true);
+    const ok = await confirmImport({
       fileName: file.name,
       mode,
       rowsOk: report.rowsOk,
       rowsFailed: report.rowsFailed,
       errors: report.errors,
-      uploadedBy: user.id,
     });
-    setFile(null);
-    setReport(null);
+    setBusy(false);
+    if (ok) { setFile(null); setReport(null); }
   }
 
   return (
@@ -85,7 +83,8 @@ export default function ImportData() {
 
       {!allowed ? (
         <Notice tone="warn">
-          เฉพาะบทบาท <b>ธุรการ</b> เท่านั้นที่นำเข้าข้อมูลหลักได้ · สลับผู้ใช้ที่มุมขวาบนเพื่อทดลอง
+          เฉพาะบทบาท <b>ธุรการ</b> เท่านั้นที่นำเข้าข้อมูลหลักได้ · ฐานข้อมูลปฏิเสธการเขียนจากบทบาทอื่น
+          ไม่ใช่แค่ซ่อนปุ่ม
         </Notice>
       ) : (
         <div className="cols2">
@@ -162,16 +161,13 @@ export default function ImportData() {
                     )}
 
                     <div className="form__actions" style={{ marginTop: 18 }}>
-                      <button type="button" className="btn btn--primary" onClick={onConfirm}>
-                        ยืนยันการนำเข้า {report.rowsOk} แถว
+                      <button type="button" className="btn btn--primary" onClick={onConfirm} disabled={busy}>
+                        {busy ? 'กำลังบันทึก…' : `ยืนยันการนำเข้า ${report.rowsOk} แถว`}
                       </button>
                       <button type="button" className="btn btn--ghost" onClick={() => { setFile(null); setReport(null); }}>
                         ยกเลิก
                       </button>
                     </div>
-                    <p className="form__note" style={{ marginTop: 10 }}>
-                      ระบบจะผูกครูกับห้องเรียนให้อัตโนมัติหลังยืนยัน · ผังข้อมูลออกแบบเผื่อเชื่อม SGS / DMC ใน Wave 2
-                    </p>
                   </>
                 )}
               </Card>
@@ -180,9 +176,9 @@ export default function ImportData() {
 
           <Card variant="flat">
             <CardLabel sub="เรียงใหม่ไปเก่า">ประวัติการนำเข้า</CardLabel>
-            {db.importBatches.length === 0 ? (
+            {importBatches.length === 0 ? (
               <Empty>ยังไม่มีประวัติ</Empty>
-            ) : db.importBatches.map((b) => (
+            ) : importBatches.map((b) => (
               <div className="list__row" key={b.id}>
                 <span className="list__main">
                   <b>{b.fileName}</b>

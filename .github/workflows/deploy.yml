@@ -1,9 +1,21 @@
 name: Deploy to GitHub Pages
 
-# The app is a static Vite bundle, so Pages serves it directly. Nothing here
-# needs a Supabase key: this build still reads the seeded fixture in
-# app/src/data, and the day it reads the live database the anon key goes in as a
-# repository secret — never in the repo.
+# The app is a static Vite bundle, so Pages serves it directly.
+#
+# It now reads the live database, so the build needs the project URL and the
+# publishable (anon) key. Both come from repository secrets — Settings → Secrets
+# and variables → Actions — never from a committed file:
+#
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY
+#
+# Vite inlines them into the bundle, which is what the anon key is for. That is
+# safe only because row level security is on and the anon role reads nothing;
+# `npm run check:supabase` asserts exactly that. The service_role key must never
+# be added here — it bypasses RLS.
+#
+# With the secrets unset the site still builds and deploys; it simply shows the
+# sign-in screen saying it has not been configured.
 
 on:
   push:
@@ -45,6 +57,8 @@ jobs:
         working-directory: app
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
       # Pages has no SPA rewrite. Serving the same shell as 404 lets a deep link

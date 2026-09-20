@@ -67,6 +67,74 @@ body { background: var(--surface-page); }
   text-transform: none;
 }
 .nav__divider { width: 1px; height: 20px; background: rgba(255, 255, 255, 0.22); flex: none; }
+.nav__signout {
+  appearance: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-control);
+}
+.nav__signout:hover { background: rgba(255, 255, 255, 0.12); color: var(--ink-000); }
+
+/* ---------------------------------------------------------------- *
+ * S0 — sign in
+ * ---------------------------------------------------------------- */
+.login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  align-items: stretch;
+  background: var(--ink-1000);
+}
+.login__glow {
+  position: absolute;
+  top: -220px; left: -160px;
+  width: 620px; height: 620px;
+  border-radius: var(--radius-circle);
+  background: radial-gradient(circle, rgba(160, 160, 224, 0.4), transparent 66%);
+  pointer-events: none;
+}
+.login__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 56px clamp(24px, 6vw, 80px);
+  color: var(--ink-000);
+  overflow: hidden;
+}
+.login__title {
+  color: var(--ink-000);
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: var(--fw-black);
+  line-height: var(--lh-tight);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.login__sub { font-size: 15px; color: rgba(255, 255, 255, 0.72); line-height: var(--lh-relaxed); }
+.login__card {
+  border-radius: 0;
+  border: 0;
+  border-left: 1px solid var(--ink-800);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(28px, 4vw, 48px);
+}
+
+@media (max-width: 860px) {
+  .login { grid-template-columns: 1fr; }
+  .login__panel { padding: 40px 20px 8px; }
+  .login__card { border-left: 0; padding: 24px 20px 48px; }
+}
 .nav__user { display: flex; align-items: center; gap: 12px; }
 .nav__who {
   font-family: var(--font-mono);

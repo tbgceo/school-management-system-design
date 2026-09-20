@@ -1,50 +1,52 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useApp, useActions } from '../store/AppContext';
-import { visibleClassrooms } from '../lib/rules';
-import {
-  SUBJECTS, CHECKPOINTS, INCIDENT_TYPES, INCIDENT_LEVELS,
-  OBSERVATION_TOPICS, OBSERVATION_ROUNDS, PARENT_CHANNELS, TARGETS, ROLES,
-} from '../data/constants';
+import { useApp } from '../store/AppContext';
+import { CHECKPOINTS, OBSERVATION_ROUNDS, ROLES } from '../data/constants';
+import { loadMarks, loadParentEntries } from '../lib/api';
 import { Card, CardLabel, Field, Notice, Badge, Empty } from '../components/Ui';
 
 const TABS = [
-  { id: 'assessment',  label: 'ผลประเมิน',     screen: 'S4' },
-  { id: 'behaviour',   label: 'พฤติกรรม',      screen: 'S5' },
-  { id: 'observation', label: 'นิเทศการสอน',   screen: 'S5' },
-  { id: 'parent',      label: 'ผู้ปกครอง',     screen: 'S5' },
+  { id: 'assessment', label: 'ผลประเมิน', screen: 'S4' },
+  { id: 'behaviour', label: 'พฤติกรรม', screen: 'S5' },
+  { id: 'observation', label: 'นิเทศการสอน', screen: 'S5' },
+  { id: 'parent', label: 'ผู้ปกครอง', screen: 'S5' },
 ];
 
 /**
  * S4 and S5 share one shell: pick a context at the top, fill the middle, submit.
- * Mobile first - the roster collapses to a single column under 860px.
+ *
+ * The class list is whatever RLS returned — a teacher sees one entry in the
+ * dropdown because the database sent one row, not because the UI filtered it.
  */
 export default function RecordForms() {
   const { kind = 'assessment' } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { db, user, semesterId } = useApp();
-  const actions = useActions();
+  const app = useApp();
+  const { classrooms, students, user } = app;
 
-  const classes = useMemo(() => visibleClassrooms(db, user, semesterId), [db, user, semesterId]);
-  const initialClass = params.get('class') && classes.some((c) => c.id === params.get('class'))
+  const initial = params.get('class') && classrooms.some((c) => c.id === params.get('class'))
     ? params.get('class')
-    : (classes[0] ? classes[0].id : '');
+    : (classrooms[0]?.id ?? '');
 
-  const [classId, setClassId] = useState(initialClass);
-  useEffect(() => { if (!classes.some((c) => c.id === classId) && classes[0]) setClassId(classes[0].id); }, [classes, classId]);
+  const [classId, setClassId] = useState(initial);
+  useEffect(() => {
+    if (!classrooms.some((c) => c.id === classId) && classrooms[0]) setClassId(classrooms[0].id);
+  }, [classrooms, classId]);
 
-  const classroom = classes.find((c) => c.id === classId);
+  const classroom = classrooms.find((c) => c.id === classId);
   const roster = useMemo(
-    () => db.students.filter((s) => s.classroomId === classId && s.semesterId === semesterId),
-    [db.students, classId, semesterId],
+    () => students.filter((s) => s.classroomId === classId).sort((a, b) => a.code.localeCompare(b.code)),
+    [students, classId],
   );
 
-  const onBehalf = user.role === 'staff';
+  const onBehalf = user?.role === 'staff';
 
-  if (!classes.length) {
+  if (!classrooms.length) {
     return <div className="wrap page"><Empty>บทบาทนี้ยังไม่มีห้องเรียนที่เข้าถึงได้</Empty></div>;
   }
+
+  const shared = { app, classrooms, classroom, classId, setClassId, roster, user };
 
   return (
     <div className="wrap page">
@@ -75,66 +77,59 @@ export default function RecordForms() {
         <div style={{ marginBottom: 18 }}>
           <Notice>
             คุณกำลังกรอกในบทบาท <b>ธุรการ</b> — ระบบจะบันทึกรายการนี้ว่าเป็น <b>การกรอกแทน</b> ครูประจำชั้น (Q2)
+            โดย <code>on_behalf</code> เป็นคอลัมน์ที่ฐานข้อมูลคำนวณเอง
           </Notice>
         </div>
       )}
 
-      {kind === 'assessment' && (
-        <AssessmentForm
-          classes={classes} classroom={classroom} classId={classId} setClassId={setClassId}
-          roster={roster} user={user} onBehalf={onBehalf} actions={actions} db={db}
-        />
-      )}
-      {kind === 'behaviour' && (
-        <BehaviourForm
-          classes={classes} classroom={classroom} classId={classId} setClassId={setClassId}
-          roster={roster} user={user} actions={actions}
-        />
-      )}
-      {kind === 'observation' && <ObservationForm db={db} user={user} actions={actions} />}
-      {kind === 'parent' && (
-        <ParentForm
-          classes={classes} classroom={classroom} classId={classId} setClassId={setClassId}
-          roster={roster} user={user} actions={actions} db={db}
-        />
-      )}
+      {kind === 'assessment' && <AssessmentForm {...shared} />}
+      {kind === 'behaviour' && <BehaviourForm {...shared} />}
+      {kind === 'observation' && <ObservationForm app={app} user={user} />}
+      {kind === 'parent' && <ParentForm {...shared} />}
     </div>
   );
 }
 
 /* ---------------------------------------------------------------- *
- * S4 - assessment
+ * S4 — assessment
  * ---------------------------------------------------------------- */
-function AssessmentForm({ classes, classroom, classId, setClassId, roster, user, onBehalf, actions, db }) {
+function AssessmentForm({ app, classrooms, classroom, classId, setClassId, roster, user }) {
+  const { subjects, targets } = app;
   const [checkpoint, setCheckpoint] = useState(4);
-  const [subjectId, setSubjectId] = useState(SUBJECTS[1].id);
+  const [subjectId, setSubjectId] = useState(subjects[1]?.id ?? subjects[0]?.id ?? '');
   const [scores, setScores] = useState({});
   const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  // Load whatever is already on file for this class/checkpoint/subject.
+  useEffect(() => { if (!subjectId && subjects[0]) setSubjectId(subjects[0].id); }, [subjects, subjectId]);
+
+  // Whatever is already on file for this class, checkpoint and subject.
   useEffect(() => {
-    const existing = db.assessments.filter(
-      (r) => r.classroomId === classId && r.checkpoint === Number(checkpoint) && r.subjectId === subjectId,
-    );
-    const next = {};
-    existing.forEach((r) => { next[r.studentId] = String(r.score); });
-    setScores(next);
-  }, [db.assessments, classId, checkpoint, subjectId]);
+    let live = true;
+    if (classId && subjectId) {
+      loadMarks(classId, Number(checkpoint), subjectId)
+        .then((m) => { if (live) setScores(m); })
+        .catch(() => { if (live) setScores({}); });
+    }
+    return () => { live = false; };
+  }, [classId, checkpoint, subjectId]);
 
+  const pass = targets.passing_score ?? 70;
   const filled = Object.values(scores).filter((v) => v !== '' && v != null).length;
-  const failing = Object.values(scores).filter((v) => v !== '' && Number(v) < TARGETS.passingScore).length;
+  const failing = Object.values(scores).filter((v) => v !== '' && Number(v) < pass).length;
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    actions.submitAssessment({
+    setBusy(true);
+    await app.submitMarks({
       classroomId: classId,
+      teacherId: classroom.homeroomTeacherId,
       checkpoint: Number(checkpoint),
       subjectId,
       scores,
       note,
-      teacherId: classroom.homeroomTeacherId,
-      recordedBy: user.id,
     });
+    setBusy(false);
     setNote('');
   }
 
@@ -145,7 +140,7 @@ function AssessmentForm({ classes, classroom, classId, setClassId, roster, user,
         <div className="form__grid">
           <Field label="ห้องเรียน" required>
             <select className="select" value={classId} onChange={(e) => setClassId(e.target.value)}>
-              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classrooms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
           <Field label="จุดตรวจ" required hint="สัปดาห์ที่ 4, 8, 12, 16">
@@ -155,7 +150,7 @@ function AssessmentForm({ classes, classroom, classId, setClassId, roster, user,
           </Field>
           <Field label="กลุ่มสาระ" required hint="8 กลุ่มสาระตามหลักสูตรแกนกลาง">
             <select className="select" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-              {SUBJECTS.map((s) => <option key={s.id} value={s.id}>{s.th}</option>)}
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.th}</option>)}
             </select>
           </Field>
         </div>
@@ -174,7 +169,7 @@ function AssessmentForm({ classes, classroom, classId, setClassId, roster, user,
         <div className="roster">
           {roster.map((s, i) => {
             const v = scores[s.id] ?? '';
-            const low = v !== '' && Number(v) < TARGETS.passingScore;
+            const low = v !== '' && Number(v) < pass;
             return (
               <div className="roster__row" key={s.id}>
                 <span className="roster__no">{String(i + 1).padStart(2, '0')}</span>
@@ -192,7 +187,7 @@ function AssessmentForm({ classes, classroom, classId, setClassId, roster, user,
                   onChange={(e) => setScores((prev) => ({ ...prev, [s.id]: e.target.value }))}
                 />
                 <span className="roster__flag">
-                  {low ? <Badge tone="danger">ต่ำกว่า {TARGETS.passingScore}</Badge> : null}
+                  {low ? <Badge tone="danger">ต่ำกว่า {pass}</Badge> : null}
                 </span>
               </div>
             );
@@ -205,12 +200,11 @@ function AssessmentForm({ classes, classroom, classId, setClassId, roster, user,
           <textarea className="textarea" rows={3} maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
         <p className="form__note" style={{ marginTop: 12 }}>
-          ผู้บันทึก: {user.nameTh}{onBehalf ? ' · บันทึกแทนครูประจำชั้น' : ''} · แก้ไขเองได้ภายใน 7 วัน (R9)
+          ผู้บันทึก: {user?.nameTh} · แก้ไขเองได้ภายใน 7 วัน หลังจากนั้นต้องให้ธุรการแก้ (R9 บังคับด้วย trigger)
         </p>
         <div className="form__actions">
-          <button type="submit" className="btn btn--primary">บันทึกและส่ง</button>
-          <button type="button" className="btn btn--ghost" onClick={() => actions.toast({ kind: 'info', text: 'เก็บเป็นฉบับร่างแล้ว' })}>
-            บันทึกร่าง
+          <button type="submit" className="btn btn--primary" disabled={busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึกและส่ง'}
           </button>
         </div>
       </Card>
@@ -219,34 +213,32 @@ function AssessmentForm({ classes, classroom, classId, setClassId, roster, user,
 }
 
 /* ---------------------------------------------------------------- *
- * S5 - behaviour
+ * S5 — behaviour
  * ---------------------------------------------------------------- */
-function BehaviourForm({ classes, classroom, classId, setClassId, roster, user, actions }) {
+function BehaviourForm({ app, classrooms, classId, setClassId, roster }) {
+  const { incidentTypes, incidentLevels } = app;
   const [query, setQuery] = useState('');
   const [studentId, setStudentId] = useState('');
-  const [typeId, setTypeId] = useState(INCIDENT_TYPES[0].id);
+  const [typeId, setTypeId] = useState('');
   const [level, setLevel] = useState(1);
   const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const matches = roster.filter(
-    (s) => s.nameTh.includes(query) || s.code.includes(query),
-  ).slice(0, 8);
+  useEffect(() => { if (!typeId && incidentTypes[0]) setTypeId(incidentTypes[0].id); }, [incidentTypes, typeId]);
 
-  function submit(e) {
+  const matches = roster.filter((s) => s.nameTh.includes(query) || s.code.includes(query)).slice(0, 8);
+  const chosen = roster.find((s) => s.id === studentId);
+
+  async function submit(e) {
     e.preventDefault();
     if (!studentId) return;
-    actions.logBehaviour({
-      classroomId: classId,
-      studentId,
-      typeId,
-      level: Number(level),
-      recordedBy: user.id,
-      note: note || null,
+    setBusy(true);
+    const ok = await app.logBehaviour({
+      classroomId: classId, studentId, typeId, level: Number(level), note,
     });
-    setStudentId(''); setQuery(''); setNote('');
+    setBusy(false);
+    if (ok) { setStudentId(''); setQuery(''); setNote(''); }
   }
-
-  const chosen = roster.find((s) => s.id === studentId);
 
   return (
     <form className="form" onSubmit={submit}>
@@ -255,17 +247,17 @@ function BehaviourForm({ classes, classroom, classId, setClassId, roster, user, 
         <div className="form__grid">
           <Field label="ห้องเรียน" required>
             <select className="select" value={classId} onChange={(e) => { setClassId(e.target.value); setStudentId(''); }}>
-              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classrooms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
           <Field label="ประเภทเหตุ" required>
             <select className="select" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-              {INCIDENT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.th}</option>)}
+              {incidentTypes.map((t) => <option key={t.id} value={t.id}>{t.th}</option>)}
             </select>
           </Field>
-          <Field label="ระดับ" required hint="หักคะแนน 2 / 5 / 10 ตามระดับ">
+          <Field label="ระดับ" required hint="หักคะแนนตามระดับ">
             <select className="select" value={level} onChange={(e) => setLevel(e.target.value)}>
-              {INCIDENT_LEVELS.map((l) => (
+              {incidentLevels.map((l) => (
                 <option key={l.level} value={l.level}>ระดับ {l.level} · {l.th} (−{l.penalty})</option>
               ))}
             </select>
@@ -306,11 +298,13 @@ function BehaviourForm({ classes, classroom, classId, setClassId, roster, user, 
         </Field>
         {Number(level) === 3 && (
           <div style={{ marginTop: 12 }}>
-            <Notice tone="warn">ระดับ 3 จะสร้างรายการที่ต้องจัดการบน Dashboard โดยอัตโนมัติ (R7)</Notice>
+            <Notice tone="warn">ระดับ 3 จะถูกหยิบขึ้น Dashboard เป็นรายการที่ต้องจัดการรอบถัดไป (R7)</Notice>
           </div>
         )}
         <div className="form__actions">
-          <button type="submit" className="btn btn--primary" disabled={!studentId}>บันทึกเหตุ</button>
+          <button type="submit" className="btn btn--primary" disabled={!studentId || busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึกเหตุ'}
+          </button>
         </div>
       </Card>
     </form>
@@ -318,33 +312,43 @@ function BehaviourForm({ classes, classroom, classId, setClassId, roster, user, 
 }
 
 /* ---------------------------------------------------------------- *
- * S5 - observation
+ * S5 — observation
  * ---------------------------------------------------------------- */
-function ObservationForm({ db, user, actions }) {
-  const teachers = db.teachers.filter((t) => t.role === 'teacher');
-  const [teacherId, setTeacherId] = useState(teachers[0] ? teachers[0].id : '');
+function ObservationForm({ app, user }) {
+  const { teachers, observationTopics, targets } = app;
+  const pool = teachers.filter((t) => t.role === 'teacher' && t.id !== user?.id);
+  const [teacherId, setTeacherId] = useState('');
   const [round, setRound] = useState(2);
-  const [scores, setScores] = useState(() => Object.fromEntries(OBSERVATION_TOPICS.map((t) => [t.id, 4])));
+  const [scores, setScores] = useState({});
   const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const values = OBSERVATION_TOPICS.map((t) => Number(scores[t.id]));
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  useEffect(() => { if (!teacherId && pool[0]) setTeacherId(pool[0].id); }, [pool, teacherId]);
+  useEffect(() => {
+    if (observationTopics.length && Object.keys(scores).length === 0) {
+      setScores(Object.fromEntries(observationTopics.map((t) => [t.id, 4])));
+    }
+  }, [observationTopics, scores]);
 
-  const allowed = ROLES[user.role].canSeeAllObservations || user.role === 'teacher';
+  const values = observationTopics.map((t) => Number(scores[t.id] ?? 4));
+  const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 
-  function submit(e) {
-    e.preventDefault();
-    actions.logObservation({
-      teacherId,
-      observerId: user.id,
-      round: Number(round),
-      scores: Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, Number(v)])),
-      note: note || null,
-    });
-    setNote('');
+  // Only a department head may insert an observation; the policy enforces it.
+  if (!user?.isDepartmentHead) {
+    return (
+      <Notice tone="warn">
+        เฉพาะ <b>หัวหน้ากลุ่มสาระ</b> เท่านั้นที่บันทึกผลนิเทศได้ (A4) · ฐานข้อมูลปฏิเสธการเขียนจากบัญชีอื่น
+      </Notice>
+    );
   }
 
-  if (!allowed) return <Empty>บทบาทนี้ไม่มีสิทธิ์บันทึกผลนิเทศ</Empty>;
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    const ok = await app.logObservation({ teacherId, round: Number(round), scores, note });
+    setBusy(false);
+    if (ok) setNote('');
+  }
 
   return (
     <form className="form" onSubmit={submit}>
@@ -355,7 +359,7 @@ function ObservationForm({ db, user, actions }) {
         <div className="form__grid">
           <Field label="ครูที่ถูกนิเทศ" required>
             <select className="select" value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
-              {teachers.map((t) => <option key={t.id} value={t.id}>{t.nameTh}</option>)}
+              {pool.map((t) => <option key={t.id} value={t.id}>{t.nameTh}</option>)}
             </select>
           </Field>
           <Field label="รอบนิเทศ" required>
@@ -368,11 +372,11 @@ function ObservationForm({ db, user, actions }) {
 
       <Card>
         <CardLabel
-          sub={`เฉลี่ยรอบนี้ ${avg.toFixed(1)} · เกณฑ์โรงเรียน ${TARGETS.observation.toFixed(1)} · คะแนน R3 เฉลี่ยจากทั้งสองรอบ`}
+          sub={`เฉลี่ยรอบนี้ ${avg.toFixed(1)} · เกณฑ์โรงเรียน ${(targets.observation ?? 4).toFixed(1)} · คะแนน R3 เฉลี่ยจากทั้งสองรอบ`}
         >
           หัวข้อประเมิน
         </CardLabel>
-        {OBSERVATION_TOPICS.map((t) => (
+        {observationTopics.map((t) => (
           <div className="list__row" key={t.id}>
             <span className="list__main">
               <b>{t.th}</b>
@@ -390,14 +394,6 @@ function ObservationForm({ db, user, actions }) {
             </span>
           </div>
         ))}
-        {avg < TARGETS.coaching && (
-          <div style={{ marginTop: 14 }}>
-            <Notice tone="warn">
-              รอบนี้ต่ำกว่า {TARGETS.coaching} · ถ้าค่าเฉลี่ยทั้งสองรอบยังต่ำกว่าเกณฑ์
-              ระบบจะสร้างรายการเข้ารอบโค้ชชิ่งให้อัตโนมัติ (R3, R7)
-            </Notice>
-          </div>
-        )}
       </Card>
 
       <Card variant="flat">
@@ -405,7 +401,9 @@ function ObservationForm({ db, user, actions }) {
           <textarea className="textarea" rows={3} maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
         <div className="form__actions">
-          <button type="submit" className="btn btn--primary">บันทึกผลนิเทศ</button>
+          <button type="submit" className="btn btn--primary" disabled={busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึกผลนิเทศ'}
+          </button>
         </div>
       </Card>
     </form>
@@ -413,30 +411,36 @@ function ObservationForm({ db, user, actions }) {
 }
 
 /* ---------------------------------------------------------------- *
- * S5 - parent engagement
+ * S5 — parent engagement
  * ---------------------------------------------------------------- */
-function ParentForm({ classes, classId, setClassId, roster, user, actions, db }) {
-  const [studentId, setStudentId] = useState(roster[0] ? roster[0].id : '');
-  useEffect(() => { setStudentId(roster[0] ? roster[0].id : ''); }, [roster]);
-
-  const student = roster.find((s) => s.id === studentId);
-  const guardianId = student ? student.guardianId : null;
-
+function ParentForm({ app, classrooms, classId, setClassId, roster }) {
+  const { parentChannels } = app;
+  const [studentId, setStudentId] = useState('');
+  const [guardianId, setGuardianId] = useState(null);
   const [entries, setEntries] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setStudentId(roster[0]?.id ?? ''); }, [roster]);
+
   useEffect(() => {
-    if (!guardianId) return;
-    const rows = db.parentEngagement.filter((r) => r.guardianId === guardianId);
-    const next = Object.fromEntries(PARENT_CHANNELS.map((c) => [c.id, false]));
-    rows.forEach((r) => { next[r.channelId] = r.done; });
-    setEntries(next);
-  }, [db.parentEngagement, guardianId]);
+    let live = true;
+    if (!studentId) return undefined;
+    loadParentEntries(studentId).then((r) => {
+      if (!live) return;
+      setGuardianId(r.guardianId);
+      setEntries(Object.fromEntries(parentChannels.map((c) => [c.id, Boolean(r.entries[c.id])])));
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [studentId, parentChannels]);
 
-  const weighted = PARENT_CHANNELS.reduce((sum, c) => sum + (entries[c.id] ? c.weight : 0), 0);
+  const weighted = parentChannels.reduce((sum, c) => sum + (entries[c.id] ? c.weight : 0), 0);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!guardianId) return;
-    actions.logParentEngagement({ classroomId: classId, guardianId, entries, recordedBy: user.id });
+    setBusy(true);
+    await app.saveParentEngagement({ classroomId: classId, guardianId, entries });
+    setBusy(false);
   }
 
   return (
@@ -448,7 +452,7 @@ function ParentForm({ classes, classId, setClassId, roster, user, actions, db })
         <div className="form__grid">
           <Field label="ห้องเรียน" required>
             <select className="select" value={classId} onChange={(e) => setClassId(e.target.value)}>
-              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classrooms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
           <Field label="นักเรียน / ผู้ปกครอง" required>
@@ -461,7 +465,7 @@ function ParentForm({ classes, classId, setClassId, roster, user, actions, db })
 
       <Card>
         <CardLabel sub={`ดัชนีของผู้ปกครองรายนี้ ${weighted} จาก 100`}>ช่องทางที่ทำแล้ว</CardLabel>
-        {PARENT_CHANNELS.map((c) => (
+        {parentChannels.map((c) => (
           <label className="list__row" key={c.id} style={{ cursor: 'pointer' }}>
             <span className="list__main">
               <b>{c.th}</b>
@@ -476,7 +480,9 @@ function ParentForm({ classes, classId, setClassId, roster, user, actions, db })
           </label>
         ))}
         <div className="form__actions">
-          <button type="submit" className="btn btn--primary" disabled={!guardianId}>บันทึก</button>
+          <button type="submit" className="btn btn--primary" disabled={!guardianId || busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+          </button>
         </div>
       </Card>
     </form>

@@ -1,20 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useApp, useActions } from '../store/AppContext';
-import { classMetrics, strugglingStudents, parentChannelRates, METRICS } from '../lib/rules';
-import {
-  CHECKPOINTS, INCIDENT_TYPES, INCIDENT_LEVELS, TARGETS, ROLES,
-} from '../data/constants';
-import { CHECKPOINT_DATES } from '../data/mockData';
-import { metricText, targetText, thaiDate, stampDate, inputDate } from '../lib/format';
+import { useApp } from '../store/AppContext';
+import { METRICS } from '../lib/rules';
+import { CHECKPOINTS, ROLES } from '../data/constants';
+import { loadStruggling } from '../lib/api';
+import { metricText, targetText, thaiDate, inputDate } from '../lib/format';
 import { Card, CardLabel, Badge, Empty, Field, Notice } from '../components/Ui';
 
 /**
- * One metric's checkpoint-by-checkpoint bars.
+ * One metric's checkpoint-by-checkpoint bars, from class_metric_series().
  *
- * Bar height is a shape indicator on a floored scale, the same treatment the design uses for
- * its sparklines - four checkpoints of a percentage that only moves a few points would be
- * indistinguishable on a zero baseline. Every bar carries its own value above it, and the
+ * Bar height is a shape indicator on a floored scale, the same treatment the
+ * design uses for its sparklines. Every bar carries its value above it and the
  * target sits under the chart, so nothing is read from height alone.
  */
 function Trend({ series, metric }) {
@@ -44,68 +41,64 @@ function Trend({ series, metric }) {
   );
 }
 
-/** S3 - where every click from the dashboard lands. */
+/** S3 — where every click from the dashboard lands. */
 export default function ClassDetail() {
   const { classId } = useParams();
   const navigate = useNavigate();
-  const { db, user, semesterId, asOf, openActionItems } = useApp();
-  const { createTask } = useActions();
+  const {
+    rows, behaviour, students, incidentTypes, incidentLevels, parentRates,
+    parentChannels, targets, openActionItems, user, createTask,
+  } = useApp();
+
   const [taskOpen, setTaskOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
-  const [taskDue, setTaskDue] = useState(inputDate(new Date(asOf.getTime() + 7 * 86400000)));
+  const [taskDue, setTaskDue] = useState(inputDate(new Date(Date.now() + 7 * 86400000)));
+  const [struggling, setStruggling] = useState([]);
 
-  const classroom = db.classrooms.find((c) => c.id === classId);
+  const metrics = rows.find((r) => r.classroom.id === classId);
 
-  const metrics = useMemo(
-    () => (classroom ? classMetrics(db, classroom, semesterId, asOf) : null),
-    [db, classroom, semesterId, asOf],
-  );
-  const struggling = useMemo(
-    () => (classroom ? strugglingStudents(db, classroom.id, semesterId) : []),
-    [db, classroom, semesterId],
-  );
-  const parents = useMemo(
-    () => (classroom ? parentChannelRates(db, semesterId, classroom.id) : []),
-    [db, classroom, semesterId],
-  );
+  // v_struggling_students is per class and only needed on this screen, so it is
+  // fetched here rather than loaded with the workspace.
+  useEffect(() => {
+    let live = true;
+    if (classId) loadStruggling(classId).then((s) => { if (live) setStruggling(s); }).catch(() => {});
+    return () => { live = false; };
+  }, [classId]);
 
-  if (!classroom) {
-    return <div className="wrap page"><Empty>ไม่พบห้องเรียนนี้ · <Link to="/">กลับหน้า Dashboard</Link></Empty></div>;
-  }
+  const metricDefs = useMemo(() => Object.fromEntries(
+    Object.entries(METRICS).map(([key, m]) => [key, { ...m, target: targets[key] ?? m.target }]),
+  ), [targets]);
 
-  // S2 permissions - a teacher can only open their own class.
-  if (user.role === 'teacher' && classroom.homeroomTeacherId !== user.id) {
+  if (!metrics) {
     return (
       <div className="wrap page">
         <Notice tone="warn">
-          บทบาท <b>ครู</b> เปิดได้เฉพาะห้องที่ตัวเองเป็นครูประจำชั้น · <Link to="/">กลับหน้า Dashboard</Link>
+          ไม่พบห้องเรียนนี้ หรือบทบาทของคุณไม่มีสิทธิ์เปิด — RLS เป็นผู้ตัดสิน ไม่ใช่หน้าจอ ·{' '}
+          <Link to="/">กลับหน้า Dashboard</Link>
         </Notice>
       </div>
     );
   }
 
-  const incidents = db.behaviour
-    .filter((b) => b.classroomId === classroom.id && b.semesterId === semesterId)
-    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
-    .slice(0, 20);
-
-  const classItems = openActionItems.filter((a) => a.classroomId === classroom.id);
+  const incidents = behaviour.filter((b) => b.classroomId === classId).slice(0, 20);
+  const classItems = openActionItems.filter((a) => a.classroomId === classId);
+  const channels = parentRates.filter((r) => r.classroom_id === classId);
   const keys = ['assessment', 'behaviour', 'observation', 'parent'];
 
-  function submitTask(e) {
+  async function submitTask(e) {
     e.preventDefault();
     if (!taskTitle.trim()) return;
-    createTask({
+    const ok = await createTask({
       title: taskTitle.trim(),
-      assigneeIds: [classroom.homeroomTeacherId],
-      classroomId: classroom.id,
-      dueDate: new Date(taskDue).toISOString(),
-      source: 'manual',
-      createdBy: user.id,
+      classroomId: classId,
+      dueDate: taskDue,
+      assigneeIds: [metrics.classroom.homeroomTeacherId],
     });
-    setTaskTitle('');
-    setTaskOpen(false);
-    navigate('/tasks');
+    if (ok) {
+      setTaskTitle('');
+      setTaskOpen(false);
+      navigate('/tasks');
+    }
   }
 
   return (
@@ -116,9 +109,9 @@ export default function ClassDetail() {
         <span className="detail__glow" aria-hidden="true" />
         <div style={{ position: 'relative' }}>
           <span className="eyebrow" style={{ color: 'rgba(255,255,255,.6)' }}>
-            MODULE 01 · CLASS DETAIL · {stampDate(asOf)}
+            MODULE 01 · CLASS DETAIL
           </span>
-          <h1 className="detail__name" style={{ margin: '10px 0 8px' }}>{classroom.name}</h1>
+          <h1 className="detail__name" style={{ margin: '10px 0 8px' }}>{metrics.classroom.name}</h1>
           <span style={{ fontSize: 14, color: 'rgba(255,255,255,.72)' }}>
             ครูประจำชั้น {metrics.homeroom.nameTh} · {metrics.studentCount} นักเรียน · ดัชนีรวม {metrics.index}
           </span>
@@ -126,10 +119,10 @@ export default function ClassDetail() {
           <div className="detail__metrics">
             {keys.map((key) => (
               <div className="detail__metric" key={key}>
-                <b>{metricText(metrics[key], METRICS[key])}</b>
-                <i>{METRICS[key].label}</i>
+                <b>{metricText(metrics[key], metricDefs[key])}</b>
+                <i>{metricDefs[key].label}</i>
                 <span>
-                  {METRICS[key].th} · target {targetText(METRICS[key])} · {metrics.statuses[key].th}
+                  {metricDefs[key].th} · target {targetText(metricDefs[key])} · {metrics.statuses[key].th}
                 </span>
                 <span className="detail__rule" />
               </div>
@@ -150,18 +143,18 @@ export default function ClassDetail() {
         {keys.map((key) => (
           <Card accent key={key}>
             <div className="row row--between">
-              <CardLabel>{METRICS[key].label}</CardLabel>
+              <CardLabel>{metricDefs[key].label}</CardLabel>
               <Badge tone={metrics.statuses[key].tone}>{metrics.statuses[key].th}</Badge>
             </div>
-            <span className="card__sub">{METRICS[key].th} · รายจุดตรวจของภาคเรียนนี้</span>
-            <Trend series={metrics.series[key]} metric={METRICS[key]} />
+            <span className="card__sub">{metricDefs[key].th} · รายจุดตรวจของภาคเรียนนี้</span>
+            <Trend series={metrics.series[key]} metric={metricDefs[key]} />
           </Card>
         ))}
       </div>
 
       <div className="cols2">
         <Card>
-          <CardLabel sub={`ต่ำกว่าเกณฑ์ผ่าน ${TARGETS.passingScore} คะแนน · ${struggling.length} คน`}>
+          <CardLabel sub={`ต่ำกว่าเกณฑ์ผ่าน ${targets.passing_score ?? 70} คะแนน · ${struggling.length} คน`}>
             นักเรียนที่ต้องติดตาม
           </CardLabel>
           {struggling.length === 0 ? (
@@ -182,17 +175,17 @@ export default function ClassDetail() {
           {incidents.length === 0 ? (
             <Empty>ยังไม่มีบันทึกพฤติกรรมในภาคเรียนนี้</Empty>
           ) : incidents.map((b) => {
-            const type = INCIDENT_TYPES.find((t) => t.id === b.typeId);
-            const lvl = INCIDENT_LEVELS.find((l) => l.level === b.level);
-            const student = db.students.find((s) => s.id === b.studentId);
+            const type = incidentTypes.find((t) => t.id === b.typeId);
+            const lvl = incidentLevels.find((l) => l.level === b.level);
+            const student = students.find((s) => s.id === b.studentId);
             return (
               <div className="list__row" key={b.id}>
                 <span className="list__main">
                   <b>{student ? student.nameTh : '—'}</b>
-                  <span>{type.th} · {thaiDate(b.occurredAt)}</span>
+                  <span>{type?.th} · {thaiDate(b.occurredAt)}</span>
                 </span>
                 <Badge tone={b.level === 3 ? 'danger' : b.level === 2 ? 'warning' : 'neutral'}>
-                  ระดับ {b.level} · {lvl.th}
+                  ระดับ {b.level} · {lvl?.th}
                 </Badge>
               </div>
             );
@@ -203,17 +196,25 @@ export default function ClassDetail() {
       <div className="cols2" style={{ marginTop: 20 }}>
         <Card>
           <CardLabel sub="หกช่องทางตามกฎ R4 · เฉพาะห้องนี้">การมีส่วนร่วมผู้ปกครอง</CardLabel>
-          {parents.map((p) => (
-            <div className="prow" key={p.channel.id}>
-              <span className="prow__label">{p.channel.th} <span className="muted small">(น้ำหนัก {p.channel.weight}%)</span></span>
-              <span className="prow__value">{p.rate.toFixed(0)}% · {p.count}/{p.of}</span>
-            </div>
-          ))}
+          {channels.length === 0 ? <Empty>ยังไม่มีข้อมูล</Empty> : channels
+            .slice()
+            .sort((a, b) => (parentChannels.findIndex((c) => c.id === a.channel_id))
+              - (parentChannels.findIndex((c) => c.id === b.channel_id)))
+            .map((p) => (
+              <div className="prow" key={p.channel_id}>
+                <span className="prow__label">
+                  {p.name_th} <span className="muted small">(น้ำหนัก {p.weight}%)</span>
+                </span>
+                <span className="prow__value">
+                  {Math.round(Number(p.rate_pct))}% · {p.done_count}/{p.guardian_count}
+                </span>
+              </div>
+            ))}
         </Card>
 
         <Card variant="flat">
           <CardLabel sub="มอบหมายงานให้ครูประจำชั้นของห้องนี้">มอบหมายงาน</CardLabel>
-          {!ROLES[user.role].canAssignTasks ? (
+          {!user || !ROLES[user.role].canAssignTasks ? (
             <Empty>เฉพาะผู้อำนวยการเท่านั้นที่มอบหมายงานได้</Empty>
           ) : !taskOpen ? (
             <button type="button" className="btn btn--outline" onClick={() => setTaskOpen(true)}>
@@ -235,7 +236,7 @@ export default function ClassDetail() {
                 <input
                   className="input"
                   type="date"
-                  min={inputDate(asOf)}
+                  min={inputDate(new Date())}
                   value={taskDue}
                   onChange={(e) => setTaskDue(e.target.value)}
                   required
@@ -249,16 +250,12 @@ export default function ClassDetail() {
           )}
 
           <div className="stack" style={{ marginTop: 18 }}>
-            <Link className="btn btn--ghost" to={`/record/assessment?class=${classroom.id}`}>เปิดฟอร์มผลประเมิน</Link>
-            <Link className="btn btn--ghost" to={`/record/behaviour?class=${classroom.id}`}>บันทึกพฤติกรรม</Link>
-            <Link className="btn btn--ghost" to={`/record/parent?class=${classroom.id}`}>บันทึกการมีส่วนร่วมผู้ปกครอง</Link>
+            <Link className="btn btn--ghost" to={`/record/assessment?class=${classId}`}>เปิดฟอร์มผลประเมิน</Link>
+            <Link className="btn btn--ghost" to={`/record/behaviour?class=${classId}`}>บันทึกพฤติกรรม</Link>
+            <Link className="btn btn--ghost" to={`/record/parent?class=${classId}`}>บันทึกการมีส่วนร่วมผู้ปกครอง</Link>
           </div>
         </Card>
       </div>
-
-      <p className="small muted" style={{ marginTop: 20 }}>
-        จุดตรวจของภาคเรียนนี้: {CHECKPOINT_DATES.map((d, i) => `CP${i + 1} ${thaiDate(d)}`).join(' · ')}
-      </p>
     </div>
   );
 }

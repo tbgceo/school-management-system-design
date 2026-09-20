@@ -1,211 +1,176 @@
 /**
- * Single in-memory store for the prototype.
+ * Session and data for the whole app.
  *
- * Every write goes through a named action here rather than being scattered across screens,
- * so in M7 each action body becomes one API call and the components stay as they are.
- * State is not persisted: a reload returns to the seeded dataset.
+ * The fixture is gone: everything here comes from Supabase, scoped by row level
+ * security. There is no role switcher any more, because a role is now a real
+ * sign-in — to see the app as a teacher you log in as that teacher, and the
+ * database, not the UI, decides what comes back.
+ *
+ * Every write goes through a named action so that swapping a query never means
+ * touching a screen.
  */
 
-import { useContext, useMemo, useReducer, useCallback } from 'react';
-import { db as seed, SCHOOL, DIRECTOR, STAFF } from '../data/mockData';
-import { AS_OF, CURRENT_SEMESTER, EDIT_WINDOW_DAYS } from '../data/constants';
-import { buildActionItems } from '../lib/rules';
-import { AppContext } from './context';
-
-let counter = 0;
-const nextId = (prefix) => {
-  counter += 1;
-  return `${prefix}-new-${counter}`;
-};
-
-const initialState = {
-  db: seed,
-  userId: DIRECTOR.id,
-  semesterId: CURRENT_SEMESTER,
-  level: 'all',
-  closedActionItems: {},
-  toast: null,
-};
-
-function reducer(state, action) {
-  switch (action.type) {
-    case 'setUser':
-      return { ...state, userId: action.userId };
-
-    case 'setSemester':
-      return { ...state, semesterId: action.semesterId };
-
-    case 'setLevel':
-      return { ...state, level: action.level };
-
-    case 'toast':
-      return { ...state, toast: action.toast };
-
-    case 'closeActionItem':
-      return {
-        ...state,
-        closedActionItems: { ...state.closedActionItems, [action.id]: new Date().toISOString() },
-        toast: { kind: 'success', text: 'ปิดรายการแล้ว · บันทึกว่าใครปิดและเมื่อไร' },
-      };
-
-    case 'submitAssessment': {
-      const { classroomId, checkpoint, subjectId, scores, note, teacherId, recordedBy } = action.payload;
-      const kept = state.db.assessments.filter(
-        (r) => !(r.classroomId === classroomId && r.checkpoint === checkpoint
-          && r.subjectId === subjectId && r.semesterId === state.semesterId),
-      );
-      const rows = Object.entries(scores)
-        .filter(([, v]) => v !== '' && v != null)
-        .map(([studentId, v]) => ({
-          id: nextId('asm'),
-          schoolId: SCHOOL.id,
-          semesterId: state.semesterId,
-          classroomId,
-          studentId,
-          subjectId,
-          checkpoint,
-          score: Number(v),
-          recordedAt: new Date().toISOString(),
-          teacherId,
-          recordedBy,
-          onBehalf: recordedBy !== teacherId,
-          note: note || null,
-        }));
-      return {
-        ...state,
-        db: { ...state.db, assessments: [...kept, ...rows] },
-        toast: { kind: 'success', text: `บันทึกผลประเมินแล้ว ${rows.length} คน · จุดตรวจที่ ${checkpoint}` },
-      };
-    }
-
-    case 'logBehaviour': {
-      const row = {
-        id: nextId('bhv'),
-        schoolId: SCHOOL.id,
-        semesterId: state.semesterId,
-        occurredAt: new Date().toISOString(),
-        ...action.payload,
-      };
-      return {
-        ...state,
-        db: { ...state.db, behaviour: [...state.db.behaviour, row] },
-        toast: { kind: 'success', text: `บันทึกพฤติกรรมระดับ ${row.level} แล้ว` },
-      };
-    }
-
-    case 'logObservation': {
-      const row = {
-        id: nextId('obs'),
-        schoolId: SCHOOL.id,
-        semesterId: state.semesterId,
-        recordedAt: new Date().toISOString(),
-        ...action.payload,
-      };
-      return {
-        ...state,
-        db: { ...state.db, observations: [...state.db.observations, row] },
-        toast: { kind: 'success', text: 'บันทึกผลนิเทศแล้ว' },
-      };
-    }
-
-    case 'logParentEngagement': {
-      const { classroomId, guardianId, entries, recordedBy } = action.payload;
-      const kept = state.db.parentEngagement.filter(
-        (r) => !(r.guardianId === guardianId && r.semesterId === state.semesterId),
-      );
-      const rows = Object.entries(entries).map(([channelId, done]) => ({
-        id: nextId('pae'),
-        schoolId: SCHOOL.id,
-        semesterId: state.semesterId,
-        classroomId,
-        guardianId,
-        channelId,
-        done,
-        recordedAt: new Date().toISOString(),
-        recordedBy,
-      }));
-      return {
-        ...state,
-        db: { ...state.db, parentEngagement: [...kept, ...rows] },
-        toast: { kind: 'success', text: 'บันทึกการมีส่วนร่วมผู้ปกครองแล้ว' },
-      };
-    }
-
-    case 'createTask': {
-      const row = {
-        id: nextId('tsk'),
-        schoolId: SCHOOL.id,
-        semesterId: state.semesterId,
-        completedAt: null,
-        createdAt: new Date().toISOString(),
-        attachments: [],
-        sourceActionItemId: null,
-        ...action.payload,
-      };
-      return {
-        ...state,
-        db: { ...state.db, tasks: [...state.db.tasks, row] },
-        toast: { kind: 'success', text: 'มอบหมายงานแล้ว' },
-      };
-    }
-
-    case 'toggleTaskDone': {
-      const tasks = state.db.tasks.map((t) => (
-        t.id === action.id ? { ...t, completedAt: t.completedAt ? null : new Date().toISOString() } : t
-      ));
-      return { ...state, db: { ...state.db, tasks } };
-    }
-
-    case 'confirmImport': {
-      const row = {
-        id: nextId('imp'),
-        schoolId: SCHOOL.id,
-        semesterId: state.semesterId,
-        uploadedAt: new Date().toISOString(),
-        state: 'confirmed',
-        ...action.payload,
-      };
-      return {
-        ...state,
-        db: { ...state.db, importBatches: [row, ...state.db.importBatches] },
-        toast: { kind: 'success', text: `นำเข้าสำเร็จ ${row.rowsOk} แถว` },
-      };
-    }
-
-    default:
-      return state;
-  }
-}
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AppContext } from './context.js';
+import { supabase, isConfigured, describeError } from '../lib/supabase.js';
+import * as api from '../lib/api.js';
+import { CURRENT_SEMESTER } from '../data/constants.js';
 
 export function AppProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [session, setSession] = useState(null);
+  const [me, setMe] = useState(null);
+  const [workspace, setWorkspace] = useState(null);
+  const [status, setStatus] = useState(isConfigured ? 'booting' : 'unconfigured');
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
-  const user = useMemo(
-    () => state.db.teachers.find((t) => t.id === state.userId) || DIRECTOR,
-    [state.db.teachers, state.userId],
-  );
+  const [semesterId, setSemesterId] = useState(CURRENT_SEMESTER);
+  const [level, setLevel] = useState('all');
 
-  const actionItems = useMemo(
-    () => buildActionItems(state.db, state.semesterId, state.closedActionItems, AS_OF),
-    [state.db, state.semesterId, state.closedActionItems],
-  );
+  /* -------------------------------------------------------------- *
+   * Session
+   * -------------------------------------------------------------- */
+  useEffect(() => {
+    if (!isConfigured) return undefined;
 
-  const openActionItems = useMemo(() => actionItems.filter((a) => !a.closedAt), [actionItems]);
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
+      if (!data.session) setStatus('signed-out');
+    });
 
-  const value = useMemo(() => ({
-    ...state,
-    user,
-    school: SCHOOL,
-    director: DIRECTOR,
-    staff: STAFF,
-    asOf: AS_OF,
-    editWindowDays: EDIT_WINDOW_DAYS,
-    actionItems,
-    openActionItems,
-    dispatch,
-  }), [state, user, actionItems, openActionItems]);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next ?? null);
+      if (!next) {
+        setMe(null);
+        setWorkspace(null);
+        setStatus('signed-out');
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  /* -------------------------------------------------------------- *
+   * Data
+   * -------------------------------------------------------------- */
+  const refresh = useCallback(async () => {
+    if (!session) return;
+    setStatus('loading');
+    setError(null);
+    try {
+      const { me: staffRow } = await api.loadMe();
+      setMe(staffRow);
+
+      // An account with no matching staff row is not an error: RLS simply shows
+      // it nothing, and the app says so rather than rendering an empty school.
+      if (!staffRow) {
+        setWorkspace(null);
+        setStatus('unlinked');
+        return;
+      }
+
+      setWorkspace(await api.loadWorkspace(semesterId));
+      setStatus('ready');
+    } catch (err) {
+      setError(describeError(err));
+      setStatus('error');
+    }
+  }, [session, semesterId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  /* -------------------------------------------------------------- *
+   * Actions. Each one writes, then reloads what the write affected.
+   * -------------------------------------------------------------- */
+  const run = useCallback(async (fn, successText) => {
+    try {
+      await fn();
+      if (successText) setToast({ kind: 'success', text: successText });
+      await refresh();
+      return true;
+    } catch (err) {
+      setToast({ kind: 'error', text: describeError(err) });
+      return false;
+    }
+  }, [refresh]);
+
+  const ctx = useMemo(() => {
+    const term = workspace?.term;
+    const base = { schoolId: term?.school_id, termId: term?.id, meId: me?.id };
+
+    return {
+      status,
+      error,
+      toast,
+      session,
+      user: me,
+      semesterId,
+      level,
+      isConfigured,
+
+      // Workspace, with empty defaults so a screen never has to null-check.
+      term,
+      rows: workspace?.rows ?? [],
+      bands: workspace?.bands ?? null,
+      parentRates: workspace?.parentRates ?? [],
+      openActionItems: workspace?.actionItems ?? [],
+      tasks: workspace?.tasks ?? [],
+      classrooms: workspace?.classrooms ?? [],
+      students: workspace?.students ?? [],
+      behaviour: workspace?.behaviour ?? [],
+      subjects: workspace?.subjects ?? [],
+      parentChannels: workspace?.parentChannels ?? [],
+      observationTopics: workspace?.observationTopics ?? [],
+      incidentTypes: workspace?.incidentTypes ?? [],
+      incidentLevels: workspace?.incidentLevels ?? [],
+      targets: workspace?.targets ?? {},
+      importBatches: workspace?.importBatches ?? [],
+      teachers: workspace?.teachers ?? [],
+
+      setSemester: setSemesterId,
+      setLevel,
+      setToast,
+      refresh,
+
+      signIn: async (email, password) => {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) return describeError(signInError);
+        return null;
+      },
+      signOut: () => supabase.auth.signOut(),
+
+      closeActionItem: (id) => run(
+        () => api.closeActionItem(id, me.id),
+        'ปิดรายการแล้ว · บันทึกว่าใครปิดและเมื่อไร',
+      ),
+      submitMarks: (payload) => run(
+        () => api.submitMarks({ ...base, ...payload }),
+        'บันทึกผลประเมินแล้ว',
+      ),
+      logBehaviour: (payload) => run(
+        () => api.logBehaviour({ ...base, ...payload }),
+        'บันทึกพฤติกรรมแล้ว',
+      ),
+      logObservation: (payload) => run(
+        () => api.logObservation({ ...base, ...payload }),
+        'บันทึกผลนิเทศแล้ว',
+      ),
+      saveParentEngagement: (payload) => run(
+        () => api.saveParentEngagement({ ...base, ...payload }),
+        'บันทึกการมีส่วนร่วมผู้ปกครองแล้ว',
+      ),
+      createTask: (payload) => run(
+        () => api.createTask({ ...base, ...payload }),
+        'มอบหมายงานแล้ว',
+      ),
+      toggleTaskDone: (taskId, done) => run(() => api.setTaskDone(taskId, done, me.id)),
+      confirmImport: (payload) => run(
+        () => api.confirmImport({ ...base, ...payload }),
+        `นำเข้าสำเร็จ ${payload.rowsOk} แถว`,
+      ),
+    };
+  }, [status, error, toast, session, me, workspace, semesterId, level, refresh, run]);
+
+  return <AppContext.Provider value={ctx}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
@@ -214,21 +179,7 @@ export function useApp() {
   return ctx;
 }
 
-/** Convenience wrapper so screens dispatch by name instead of building action objects. */
+/** Kept so screens can carry on importing actions separately from state. */
 export function useActions() {
-  const { dispatch } = useApp();
-  return {
-    setUser: useCallback((userId) => dispatch({ type: 'setUser', userId }), [dispatch]),
-    setSemester: useCallback((semesterId) => dispatch({ type: 'setSemester', semesterId }), [dispatch]),
-    setLevel: useCallback((level) => dispatch({ type: 'setLevel', level }), [dispatch]),
-    toast: useCallback((toast) => dispatch({ type: 'toast', toast }), [dispatch]),
-    closeActionItem: useCallback((id) => dispatch({ type: 'closeActionItem', id }), [dispatch]),
-    submitAssessment: useCallback((payload) => dispatch({ type: 'submitAssessment', payload }), [dispatch]),
-    logBehaviour: useCallback((payload) => dispatch({ type: 'logBehaviour', payload }), [dispatch]),
-    logObservation: useCallback((payload) => dispatch({ type: 'logObservation', payload }), [dispatch]),
-    logParentEngagement: useCallback((payload) => dispatch({ type: 'logParentEngagement', payload }), [dispatch]),
-    createTask: useCallback((payload) => dispatch({ type: 'createTask', payload }), [dispatch]),
-    toggleTaskDone: useCallback((id) => dispatch({ type: 'toggleTaskDone', id }), [dispatch]),
-    confirmImport: useCallback((payload) => dispatch({ type: 'confirmImport', payload }), [dispatch]),
-  };
+  return useApp();
 }

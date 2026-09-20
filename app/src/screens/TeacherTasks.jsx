@@ -1,50 +1,49 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useApp, useActions } from '../store/AppContext';
-import { visibleTasks, taskStatus, visibleClassrooms } from '../lib/rules';
+import { useApp } from '../store/AppContext';
 import { TASK_STATUS, ROLES } from '../data/constants';
 import { thaiDate, inputDate, daysBetween } from '../lib/format';
 import { Card, CardLabel, Badge, Field, Empty, Notice } from '../components/Ui';
 
-/** S6 - Module 02 in its MVP form. Status is derived by R8; teachers only tick "done". */
+/**
+ * S6 — Module 02 in its MVP form.
+ *
+ * Status comes from v_tasks, which applies R8 against current_date, so a task
+ * turns overdue on its own without anything being written. The list itself is
+ * already scoped: a teacher's select returns only tasks they are assigned to.
+ */
 export default function TeacherTasks() {
-  const { db, user, semesterId, asOf } = useApp();
-  const { createTask, toggleTaskDone } = useActions();
+  const { tasks, classrooms, teachers, user, createTask, toggleTaskDone } = useApp();
   const [filter, setFilter] = useState('all');
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [assignees, setAssignees] = useState([]);
   const [classId, setClassId] = useState('');
-  const [due, setDue] = useState(inputDate(new Date(asOf.getTime() + 7 * 86400000)));
+  const [due, setDue] = useState(inputDate(new Date(Date.now() + 7 * 86400000)));
 
-  const tasks = useMemo(() => visibleTasks(db, user, semesterId), [db, user, semesterId]);
-  const withStatus = useMemo(
-    () => tasks.map((t) => ({ task: t, status: taskStatus(t, asOf) }))
-      .sort((a, b) => new Date(a.task.dueDate) - new Date(b.task.dueDate)),
-    [tasks, asOf],
+  const sorted = useMemo(
+    () => [...tasks].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)),
+    [tasks],
   );
 
-  const shown = filter === 'all' ? withStatus : withStatus.filter((t) => t.status.key === filter);
+  const shown = filter === 'all' ? sorted : sorted.filter((t) => t.status === filter);
   const counts = Object.keys(TASK_STATUS).reduce((acc, k) => {
-    acc[k] = withStatus.filter((t) => t.status.key === k).length;
+    acc[k] = sorted.filter((t) => t.status === k).length;
     return acc;
   }, {});
 
-  const teachers = db.teachers.filter((t) => t.role === 'teacher');
-  const classes = visibleClassrooms(db, user, semesterId);
+  const canAssign = user && ROLES[user.role].canAssignTasks;
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!title.trim() || !assignees.length) return;
-    createTask({
+    const ok = await createTask({
       title: title.trim(),
       assigneeIds: assignees,
       classroomId: classId || null,
-      dueDate: new Date(due).toISOString(),
-      source: 'manual',
-      createdBy: user.id,
+      dueDate: due,
     });
-    setTitle(''); setAssignees([]); setClassId(''); setOpen(false);
+    if (ok) { setTitle(''); setAssignees([]); setClassId(''); setOpen(false); }
   }
 
   return (
@@ -54,12 +53,12 @@ export default function TeacherTasks() {
           <span className="eyebrow">MODULE 02 · TEACHER TASKS</span>
           <h1 className="page__title">งานของครู</h1>
           <span className="page__sub">
-            {user.role === 'teacher' ? 'งานที่มอบหมายให้คุณ' : 'มอบหมายงาน ติดตามสถานะ และปิดงาน'} ·
+            {user?.role === 'teacher' ? 'งานที่มอบหมายให้คุณ' : 'มอบหมายงาน ติดตามสถานะ และปิดงาน'} ·
             สถานะคำนวณจากวันครบกำหนดตามกฎ R8
           </span>
         </div>
         <div className="page__tools">
-          {ROLES[user.role].canAssignTasks && (
+          {canAssign && (
             <button type="button" className="btn btn--primary" onClick={() => setOpen((v) => !v)}>
               {open ? 'ปิดฟอร์ม' : '+ มอบหมายงาน'}
             </button>
@@ -84,7 +83,9 @@ export default function TeacherTasks() {
                 value={assignees}
                 onChange={(e) => setAssignees(Array.from(e.target.selectedOptions, (o) => o.value))}
               >
-                {teachers.map((t) => <option key={t.id} value={t.id}>{t.nameTh}</option>)}
+                {teachers.filter((t) => t.role === 'teacher').map((t) => (
+                  <option key={t.id} value={t.id}>{t.nameTh}</option>
+                ))}
               </select>
             </Field>
 
@@ -92,11 +93,11 @@ export default function TeacherTasks() {
               <Field label="ห้องเรียนที่เกี่ยวข้อง" hint="ไม่บังคับ">
                 <select className="select" value={classId} onChange={(e) => setClassId(e.target.value)}>
                   <option value="">— ไม่ระบุ —</option>
-                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {classrooms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </Field>
               <Field label="วันครบกำหนด" required>
-                <input className="input" type="date" min={inputDate(asOf)} value={due} onChange={(e) => setDue(e.target.value)} required />
+                <input className="input" type="date" min={inputDate(new Date())} value={due} onChange={(e) => setDue(e.target.value)} required />
               </Field>
             </div>
 
@@ -110,7 +111,7 @@ export default function TeacherTasks() {
 
       <div className="tabs">
         <button type="button" className={`tab${filter === 'all' ? ' is-active' : ''}`} onClick={() => setFilter('all')}>
-          ทั้งหมด · {withStatus.length}
+          ทั้งหมด · {sorted.length}
         </button>
         {Object.values(TASK_STATUS).map((s) => (
           <button
@@ -126,20 +127,18 @@ export default function TeacherTasks() {
 
       {counts.overdue > 0 && filter === 'all' && (
         <div style={{ marginBottom: 18 }}>
-          <Notice tone="warn">
-            มีงานเลยกำหนด {counts.overdue} รายการ · งานที่ค้างจะแสดงบน Dashboard ด้วย
-          </Notice>
+          <Notice tone="warn">มีงานเลยกำหนด {counts.overdue} รายการ</Notice>
         </div>
       )}
 
       <div className="panel">
         {shown.length === 0 ? (
           <Empty>ไม่มีงานในตัวกรองนี้</Empty>
-        ) : shown.map(({ task, status }) => {
-          const assigned = task.assigneeIds.map((id) => db.teachers.find((t) => t.id === id)).filter(Boolean);
-          const cls = task.classroomId ? db.classrooms.find((c) => c.id === task.classroomId) : null;
-          const days = daysBetween(task.dueDate, asOf);
-          const mine = task.assigneeIds.includes(user.id);
+        ) : shown.map((task) => {
+          const cls = task.classroomId ? classrooms.find((c) => c.id === task.classroomId) : null;
+          const days = daysBetween(task.dueDate, new Date());
+          const mine = user && task.assigneeIds.includes(user.id);
+          const band = TASK_STATUS[task.status];
 
           return (
             <div className="task" key={task.id}>
@@ -147,18 +146,17 @@ export default function TeacherTasks() {
                 className="checkbox"
                 type="checkbox"
                 checked={!!task.completedAt}
-                disabled={!(mine || user.role === 'director')}
-                onChange={() => toggleTaskDone(task.id)}
+                disabled={!(mine || user?.role === 'director')}
+                onChange={() => toggleTaskDone(task.id, !task.completedAt)}
                 aria-label={`ทำเครื่องหมายว่า ${task.title} เสร็จแล้ว`}
               />
 
               <div style={{ minWidth: 0 }}>
                 <div className="task__title">{task.title}</div>
                 <div className="task__meta">
-                  {assigned.map((t) => t.nameTh).join(', ')}
+                  {task.assignees.map((t) => t.nameTh).join(', ')}
                   {cls && <> · <Link to={`/class/${cls.id}`}>{cls.name}</Link></>}
                   {task.source === 'action_item' && <> · มาจากรายการที่ต้องจัดการ</>}
-                  {task.attachments.length > 0 && <> · แนบ {task.attachments.length} ไฟล์</>}
                 </div>
               </div>
 
@@ -173,7 +171,7 @@ export default function TeacherTasks() {
               </span>
 
               <span className="right">
-                <Badge tone={status.tone}>{status.th}</Badge>
+                <Badge tone={band.tone}>{band.th}</Badge>
               </span>
             </div>
           );

@@ -134,6 +134,18 @@ export const MODULES = [
   { no: '05', label: 'SEO & SOCIAL',      path: null,     live: false },
 ];
 
+/**
+ * The "This week" panel on S2. Calendar entries, not derived metrics — there is
+ * no table behind them yet, so they stay a constant until Module 04 brings a
+ * real schedule.
+ */
+export const WEEK_ITEMS = [
+  { label: 'PLC circle · วง PLC ครูคณิตศาสตร์', when: 'พุธ 15:30' },
+  { label: 'Observation round 2 opens · นิเทศรอบ 2', when: 'พฤหัสบดี' },
+  { label: 'Parent conference ม.1-ม.3', when: 'เสาร์ 09:00' },
+  { label: 'ปิดจุดตรวจที่ 4 · assessment checkpoint 4', when: '26 ก.ย.' },
+];
+
 /** Level filter on S2. */
 export const LEVEL_FILTERS = [
   { id: 'all',     th: 'ทุกระดับชั้น', en: 'All levels' },
