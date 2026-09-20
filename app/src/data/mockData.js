@@ -377,6 +377,13 @@ function buildBehaviour(classrooms, students) {
 function buildObservations(teachers, classrooms) {
   const rows = [];
   const heads = teachers.filter((t) => t.isDepartmentHead);
+
+  // Department heads are observed too, so the rotation has to skip the teacher
+  // being scored — nobody observes themselves (A4).
+  const observerFor = (teacherId, i) => {
+    const pool = heads.filter((h) => h.id !== teacherId);
+    return pool[i % pool.length].id;
+  };
   let seq = 0;
 
   const scoreFor = (teacherId, target) => {
@@ -389,7 +396,7 @@ function buildObservations(teachers, classrooms) {
         schoolId: SCHOOL_ID,
         semesterId: SEM,
         teacherId,
-        observerId: heads[seq % heads.length].id,
+        observerId: observerFor(teacherId, seq),
         round,
         scores,
         recordedAt: iso(addDays(TERM_START, round === 1 ? 45 : 100)),
